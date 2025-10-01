@@ -1,0 +1,6 @@
+server/screenshots
+server/node_modules
+windows-app/node_modules
+windows-app/dist
+server/.env
+.DS_Store

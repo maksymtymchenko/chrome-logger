@@ -1,0 +1,5 @@
+1. видалити загальну статистику - completed
+2. зробити мождивіть вводу ім"я тільки раз - completed
+3. використовувати device id замість usr name або адмін сетить user name - completed (user enters name once with device ID fallback)
+4. робити скріншот по івенту (типу клік по кнопці) - completed
+5. треба відслідковувати інфу яка йде і приходить від юзера
