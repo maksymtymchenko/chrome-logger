@@ -5,6 +5,7 @@ let allEvents = [];
 let filteredEvents = [];
 let currentPage = 1;
 const itemsPerPage = 20;
+let currentEventIndex = 0;
 let chart = null;
 let usersChart = null;
 
@@ -22,6 +23,7 @@ const searchInput = document.getElementById('searchInput');
 const userFilter = document.getElementById('userFilter');
 const domainFilter = document.getElementById('domainFilter');
 const timeFilter = document.getElementById('timeFilter');
+const activityTypeFilter = document.getElementById('activityTypeFilter');
 const refreshBtn = document.getElementById('refreshBtn');
 const tbody = document.querySelector('#activityTable tbody');
 const pagination = document.getElementById('pagination');
@@ -91,10 +93,24 @@ function setupEventListeners() {
     userFilter.addEventListener('change', applyFilters);
     domainFilter.addEventListener('change', applyFilters);
     timeFilter.addEventListener('change', applyFilters);
+    if (activityTypeFilter) {
+        activityTypeFilter.addEventListener('change', applyFilters);
+    }
     refreshBtn.addEventListener('click', () => {
         loadData();
         loadScreens();
     });
+
+    // Export buttons
+    const exportAllBtn = document.getElementById('exportAllBtn');
+    const exportCSVBtn = document.getElementById('exportCSVBtn');
+
+    if (exportAllBtn) {
+        exportAllBtn.addEventListener('click', exportAllData);
+    }
+    if (exportCSVBtn) {
+        exportCSVBtn.addEventListener('click', exportCSV);
+    }
     refreshScreenshotsBtn.addEventListener('click', () => {
         loadScreens();
     });
@@ -161,6 +177,9 @@ async function loadData() {
 
         // Update stats
         updateStats(allEvents);
+
+        // Update status indicators
+        updateStatusIndicators(allEvents);
 
         // Create domain activity chart
         createDomainChart(allEvents);
@@ -375,19 +394,22 @@ function applyFilters() {
     const selectedUser = userFilter.value;
     const selectedDomain = domainFilter.value;
     const selectedTime = timeFilter.value;
+    const selectedActivityType = activityTypeFilter ? activityTypeFilter.value : '';
 
     filteredEvents = allEvents.filter(event => {
         const matchesSearch = !searchTerm ||
             event.username.toLowerCase().includes(searchTerm) ||
             event.domain.toLowerCase().includes(searchTerm) ||
-            (event.reason && event.reason.toLowerCase().includes(searchTerm));
+            (event.reason && event.reason.toLowerCase().includes(searchTerm)) ||
+            (event.data.application && event.data.application.toLowerCase().includes(searchTerm));
 
         const matchesUser = !selectedUser || event.username === selectedUser;
         const matchesDomain = !selectedDomain || event.domain === selectedDomain;
+        const matchesActivityType = !selectedActivityType || event.type === selectedActivityType;
 
         const matchesTime = !selectedTime || isWithinTimeRange(event.timestamp, selectedTime);
 
-        return matchesSearch && matchesUser && matchesDomain && matchesTime;
+        return matchesSearch && matchesUser && matchesDomain && matchesActivityType && matchesTime;
     });
 
     currentPage = 1;
@@ -486,11 +508,137 @@ function getActivityDescription(event) {
     return event.reason || 'Active';
 }
 
+function getApplicationInfo(event) {
+    // Check multiple possible locations for application info
+    let appName = null;
+
+    // Check event.data.application first
+    if (event.data && event.data.application) {
+        appName = event.data.application;
+    }
+    // Check event.data.app as alternative
+    else if (event.data && event.data.app) {
+        appName = event.data.app;
+    }
+    // Check event.data.windowTitle for clues
+    else if (event.data && event.data.windowTitle) {
+        const title = event.data.windowTitle.toLowerCase();
+        if (title.includes('chrome')) appName = 'Chrome';
+        else if (title.includes('firefox')) appName = 'Firefox';
+        else if (title.includes('safari')) appName = 'Safari';
+        else if (title.includes('edge')) appName = 'Edge';
+        else if (title.includes('code') || title.includes('vscode')) appName = 'VS Code';
+        else if (title.includes('cursor')) appName = 'Cursor';
+        else if (title.includes('electron')) appName = 'Electron';
+        else if (title.includes('terminal') || title.includes('cmd')) appName = 'Terminal';
+    }
+    // Check event.data.url for browser clues
+    else if (event.data && event.data.url) {
+        const url = event.data.url.toLowerCase();
+        if (url.includes('chrome://')) appName = 'Chrome';
+        else if (url.includes('about:') || url.includes('moz-extension://')) appName = 'Firefox';
+        else if (url.includes('safari://')) appName = 'Safari';
+        else if (url.includes('edge://')) appName = 'Edge';
+    }
+    // Check event type for clues
+    else if (event.type === 'screenshot') {
+        appName = 'Screenshot Tool';
+    } else if (event.type === 'clipboard') {
+        appName = 'Clipboard';
+    } else if (event.type === 'window_activity') {
+        appName = 'Window Manager';
+    }
+
+    if (appName) {
+        const app = appName.toLowerCase();
+        if (app.includes('chrome') || app.includes('google chrome')) {
+            return { name: 'Chrome', icon: '🌐' };
+        } else if (app.includes('firefox')) {
+            return { name: 'Firefox', icon: '🦊' };
+        } else if (app.includes('safari')) {
+            return { name: 'Safari', icon: '🧭' };
+        } else if (app.includes('edge')) {
+            return { name: 'Edge', icon: '🌊' };
+        } else if (app.includes('code') || app.includes('vscode')) {
+            return { name: 'VS Code', icon: '💻' };
+        } else if (app.includes('cursor')) {
+            return { name: 'Cursor', icon: '🎯' };
+        } else if (app.includes('electron')) {
+            return { name: 'Electron', icon: '⚡' };
+        } else if (app.includes('terminal') || app.includes('cmd')) {
+            return { name: 'Terminal', icon: '💻' };
+        } else if (app.includes('screenshot')) {
+            return { name: 'Screenshot', icon: '📸' };
+        } else if (app.includes('clipboard')) {
+            return { name: 'Clipboard', icon: '📋' };
+        } else if (app.includes('window')) {
+            return { name: 'Window Manager', icon: '🪟' };
+        } else {
+            return { name: appName, icon: '🖥️' };
+        }
+    }
+
+    // Fallback based on domain
+    if (event.domain) {
+        const domain = event.domain.toLowerCase();
+        if (domain.includes('google.com') || domain.includes('youtube.com') || domain.includes('gmail.com')) {
+            return { name: 'Browser', icon: '🌐' };
+        } else if (domain.includes('github.com')) {
+            return { name: 'GitHub', icon: '🐙' };
+        } else if (domain.includes('stackoverflow.com')) {
+            return { name: 'Stack Overflow', icon: '📚' };
+        } else if (domain === 'windows-desktop') {
+            return { name: 'Desktop', icon: '🖥️' };
+        }
+    }
+
+    return { name: 'Unknown', icon: '❓' };
+}
+
+function getActivityTypeInfo(event) {
+    if (event.type === 'window_activity') {
+        return { text: 'Window Activity', icon: '🪟' };
+    } else if (event.type === 'form_interaction') {
+        return { text: 'Form Interaction', icon: '📝' };
+    } else if (event.type === 'click') {
+        return { text: 'Click', icon: '👆' };
+    } else if (event.type === 'keypress') {
+        return { text: 'Keypress', icon: '⌨️' };
+    } else if (event.type === 'scroll') {
+        return { text: 'Scroll', icon: '📜' };
+    } else if (event.type === 'screenshot') {
+        return { text: 'Screenshot', icon: '📸' };
+    } else if (event.type === 'clipboard') {
+        return { text: 'Clipboard', icon: '📋' };
+    } else {
+        return { text: event.type || 'Activity', icon: '📊' };
+    }
+}
+
+function formatDuration(seconds) {
+    // Handle very small durations with more detail
+    if (seconds < 0.1) {
+        return '0s';
+    } else if (seconds < 1) {
+        return `${Math.round(seconds * 10) / 10}s`;
+    } else if (seconds < 60) {
+        return `${Math.round(seconds)}s`;
+    } else if (seconds < 3600) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.round(seconds % 60);
+        return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+    } else {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+}
+
 function renderTable() {
     tbody.innerHTML = '';
 
     if (filteredEvents.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-search"></i><br>No events found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-search"></i><br>No events found</td></tr>';
         return;
     }
 
@@ -498,20 +646,55 @@ function renderTable() {
     const endIndex = startIndex + itemsPerPage;
     const pageEvents = filteredEvents.slice(startIndex, endIndex);
 
-    pageEvents.forEach(e => {
+    pageEvents.forEach((e, index) => {
         const tr = document.createElement('tr');
         const t = new Date(e.timestamp).toLocaleString();
-        const duration = Math.round((e.durationMs || 0) / 1000);
+
+        // Calculate duration - use durationMs if available, otherwise estimate from time between events
+        let duration = Math.round((e.durationMs || 0) / 1000);
+
+        // If duration is 0 or very small, try to calculate from next event
+        if (duration < 1 && index < pageEvents.length - 1) {
+            const nextEvent = pageEvents[index + 1];
+            const timeDiff = (new Date(nextEvent.timestamp) - new Date(e.timestamp)) / 1000;
+            if (timeDiff > 0 && timeDiff < 300) { // Only use if reasonable (less than 5 minutes)
+                duration = Math.round(timeDiff);
+            }
+        }
+
+        // Fallback: if still no duration, use a default based on event type
+        if (duration < 1) {
+            if (e.type === 'screenshot') {
+                duration = 1; // Screenshots take about 1 second
+            } else if (e.type === 'window_activity') {
+                duration = 5; // Window activities are typically 5+ seconds
+            } else {
+                duration = 1; // Default 1 second
+            }
+        }
+
         const source = getSourceInfo(e);
+        const application = getApplicationInfo(e);
+        const activityType = getActivityTypeInfo(e);
+
+        // Debug: Log duration values for first few events
+        if (startIndex + index < 3) {
+            console.log(`Event ${startIndex + index}: durationMs=${e.durationMs}, calculated duration=${duration}s, type=${e.type}`);
+        }
 
         tr.innerHTML = `
             <td class="time-cell">${t}</td>
             <td class="user-cell"><span class="user-badge">${e.username || 'Unknown'}</span></td>
-            <td class="user-cell"><span class="device-id">${e.deviceIdHash || 'N/A'}</span></td>
+            <td class="application-cell"><span class="application-badge">${application.icon} ${application.name}</span></td>
             <td class="domain-cell"><a href="https://${e.domain}" target="_blank" class="domain-link">${e.domain}</a></td>
-            <td class="source-cell"><span class="source-badge ${source.class}">${source.icon} ${source.text}</span></td>
-            <td class="duration-cell"><span class="duration-badge">${duration}s</span></td>
-            <td class="reason-cell"><span class="reason-badge">${getActivityDescription(e)}</span></td>
+            <td class="activity-type-cell"><span class="activity-type-badge">${activityType.icon} ${activityType.text}</span></td>
+            <td class="duration-cell"><span class="duration-badge">${formatDuration(duration)}</span></td>
+            <td class="details-cell"><span class="reason-badge">${getActivityDescription(e)}</span></td>
+            <td class="actions-cell">
+                <button class="view-details-btn" onclick="showEventDetails(${startIndex + index})">
+                    <i class="fas fa-eye"></i> View
+                </button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -710,71 +893,6 @@ function renderScreenshotPagination() {
     screenshotPagination.appendChild(nextBtn);
 }
 
-// Export functionality
-async function exportData(format) {
-    try {
-        const res = await fetch('/api/activity?limit=10000');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const payload = await res.json();
-        const data = payload.events;
-
-        let blob, filename, mimeType;
-
-        switch (format) {
-            case 'json':
-                blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                filename = `activity-export-${new Date().toISOString().split('T')[0]}.json`;
-                break;
-            case 'csv':
-                const csv = convertToCSV(data);
-                blob = new Blob([csv], { type: 'text/csv' });
-                filename = `activity-export-${new Date().toISOString().split('T')[0]}.csv`;
-                break;
-            case 'excel':
-                // For Excel, we'll create a CSV that Excel can open
-                const excelCsv = convertToCSV(data);
-                blob = new Blob([excelCsv], { type: 'text/csv' });
-                filename = `activity-export-${new Date().toISOString().split('T')[0]}.csv`;
-                break;
-            default:
-                throw new Error('Unsupported format');
-        }
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        // Show success message
-        showSuccessMessage(`Data exported as ${format.toUpperCase()}`);
-    } catch (error) {
-        console.error('Export error:', error);
-        showErrorMessage('Failed to export data');
-    }
-}
-
-function convertToCSV(data) {
-    const headers = ['Timestamp', 'User', 'Device ID', 'Domain', 'Duration (seconds)', 'Reason'];
-    const rows = data.map(event => [
-        new Date(event.timestamp).toISOString(),
-        event.username || 'Unknown',
-        event.deviceIdHash || 'N/A',
-        event.domain,
-        Math.round((event.durationMs || 0) / 1000),
-        event.reason || 'Active'
-    ]);
-
-    const csvContent = [headers, ...rows]
-        .map(row => row.map(field => `"${field}"`).join(','))
-        .join('\n');
-
-    return csvContent;
-}
 
 function showLoading(message) {
     // You can implement a loading overlay here
@@ -1642,3 +1760,196 @@ function displayRecentBreaks(dailyBreaks) {
     container.innerHTML = '';
     container.appendChild(breaksList);
 }
+
+// Modal functionality
+function showEventDetails(eventIndex) {
+    currentEventIndex = eventIndex;
+    const event = filteredEvents[eventIndex];
+    if (!event) return;
+
+    const modal = document.getElementById('detailModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    modalBody.innerHTML = `
+        <div class="detail-section">
+            <h4>Basic Information</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Timestamp</div>
+                    <div class="detail-value">${new Date(event.timestamp).toLocaleString()}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">User</div>
+                    <div class="detail-value">${event.username || 'Unknown'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Duration</div>
+                    <div class="detail-value">${formatDuration(Math.round((event.durationMs || 0) / 1000))}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Activity Type</div>
+                    <div class="detail-value">${event.type || 'Unknown'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Application & Domain</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Application</div>
+                    <div class="detail-value">${event.data?.application || 'Unknown'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Domain</div>
+                    <div class="detail-value">${event.domain || 'Unknown'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">URL</div>
+                    <div class="detail-value">${event.data?.url || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Window Title</div>
+                    <div class="detail-value">${event.data?.windowTitle || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Activity Details</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Reason</div>
+                    <div class="detail-value">${event.reason || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Source</div>
+                    <div class="detail-value">${event.source || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Device ID</div>
+                    <div class="detail-value">${event.deviceIdHash || 'N/A'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">IP Address</div>
+                    <div class="detail-value">${event.ipAddress || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Raw Data</h4>
+            <div class="json-viewer">${JSON.stringify(event, null, 2)}</div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+}
+
+function hideEventDetails() {
+    const modal = document.getElementById('detailModal');
+    modal.style.display = 'none';
+}
+
+function exportCurrentEntry() {
+    const event = filteredEvents[currentEventIndex];
+    if (!event) return;
+
+    const dataStr = JSON.stringify(event, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity-${event.username}-${new Date(event.timestamp).toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+}
+
+function exportAllData() {
+    const dataStr = JSON.stringify(filteredEvents, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+}
+
+function exportCSV() {
+    const headers = ['Timestamp', 'User', 'Application', 'Domain', 'Activity Type', 'Duration (s)', 'Reason', 'Source'];
+    const csvContent = [
+        headers.join(','),
+        ...filteredEvents.map(event => [
+            new Date(event.timestamp).toISOString(),
+            event.username || 'Unknown',
+            event.data?.application || 'Unknown',
+            event.domain || 'Unknown',
+            event.type || 'Unknown',
+            Math.round((event.durationMs || 0) / 1000),
+            event.reason || 'N/A',
+            event.source || 'N/A'
+        ].map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const dataBlob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity-export-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+}
+
+function updateStatusIndicators(events) {
+    const totalUsers = document.getElementById('totalUsers');
+    const totalEvents = document.getElementById('totalEvents');
+    const totalDomains = document.getElementById('totalDomains');
+    
+    if (totalUsers) {
+        const uniqueUsers = new Set(events.map(e => e.username)).size;
+        totalUsers.textContent = uniqueUsers;
+    }
+    
+    if (totalEvents) {
+        totalEvents.textContent = events.length;
+    }
+    
+    if (totalDomains) {
+        const uniqueDomains = new Set(events.map(e => e.domain)).size;
+        totalDomains.textContent = uniqueDomains;
+    }
+}
+
+// Add modal event listeners after DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Modal event listeners
+    const closeModal = document.getElementById('closeModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const exportEntry = document.getElementById('exportEntry');
+    const detailModal = document.getElementById('detailModal');
+    
+    if (closeModal) {
+        closeModal.addEventListener('click', hideEventDetails);
+    }
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', hideEventDetails);
+    }
+    if (exportEntry) {
+        exportEntry.addEventListener('click', exportCurrentEntry);
+    }
+    if (detailModal) {
+        // Close modal when clicking outside
+        detailModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideEventDetails();
+            }
+        });
+    }
+});

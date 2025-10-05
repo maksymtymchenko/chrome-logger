@@ -309,6 +309,170 @@
             font-weight: 500;
         }
         
+        .activity-type-badge {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .application-badge {
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .view-details-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        
+        .view-details-btn:hover {
+            background: #2563eb;
+        }
+        /* Modal Styles */
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #1f2937;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .detail-section {
+            margin-bottom: 20px;
+        }
+        
+        .detail-section h4 {
+            margin: 0 0 10px 0;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .detail-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            font-size: 14px;
+            color: #1f2937;
+            word-break: break-word;
+        }
+        
+        .json-viewer {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .status-indicators {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-item i {
+            color: #3b82f6;
+        }
+        
+        .status-item span {
+            color: #1f2937;
+            font-weight: 600;
+        }
+        
         .reason-badge {
             background: #fef3c7;
             color: #92400e;
@@ -633,42 +797,6 @@
             gap: 20px;
         }
         
-        .export-section {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        
-        .export-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        
-        .btn-export {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-export:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
-        }
-        
         @media (max-width: 1200px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -982,38 +1110,6 @@
         [data-theme="dark"] .user-status.offline {
             color: var(--text-muted);
         }
-        
-        [data-theme="dark"] .export-section {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-        }
-        
-        [data-theme="dark"] .export-section h3 {
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] .export-buttons {
-            background: var(--bg-tertiary);
-        }
-        
-        [data-theme="dark"] .export-btn {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-        
-        [data-theme="dark"] .export-btn:hover {
-            background: var(--border-color);
-        }
-        
-        [data-theme="dark"] .export-btn.primary {
-            background: var(--accent-primary);
-            color: white;
-        }
-        
-        [data-theme="dark"] .export-btn.primary:hover {
-            background: #2563eb;
-        }
         /* Activity Log specific dark mode styles */
         
         [data-theme="dark"] .activity-log {
@@ -1233,6 +1329,20 @@
                 <div class="live-dot"></div>
                 Live Updates
             </div>
+            <div class="status-indicators">
+                <div class="status-item">
+                    <i class="fas fa-users"></i>
+                    <span id="totalUsers">0</span> Users
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-clock"></i>
+                    <span id="totalEvents">0</span> Events
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-globe"></i>
+                    <span id="totalDomains">0</span> Domains
+                </div>
+            </div>
         </div>
 
         <div class="stats-grid">
@@ -1297,21 +1407,6 @@
                     </div>
                 </div>
 
-                <div class="export-section">
-                    <h3><i class="fas fa-download"></i> Export Data</h3>
-                    <p style="margin-bottom: 20px; color: #6b7280;">Download your activity data in various formats</p>
-                    <div class="export-buttons">
-                        <button class="btn-export" onclick="exportData('json')">
-                            <i class="fas fa-file-code"></i> JSON
-                        </button>
-                        <button class="btn-export" onclick="exportData('csv')">
-                            <i class="fas fa-file-csv"></i> CSV
-                        </button>
-                        <button class="btn-export" onclick="exportData('excel')">
-                            <i class="fas fa-file-excel"></i> Excel
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -1331,8 +1426,24 @@
                     <option value="week">This Week</option>
                     <option value="month">This Month</option>
                 </select>
+                <select id="activityTypeFilter" class="filter-select">
+                    <option value="">All Activity Types</option>
+                    <option value="window_activity">Window Activity</option>
+                    <option value="form_interaction">Form Interaction</option>
+                    <option value="click">Click</option>
+                    <option value="keypress">Keypress</option>
+                    <option value="scroll">Scroll</option>
+                    <option value="screenshot">Screenshot</option>
+                    <option value="clipboard">Clipboard</option>
+                </select>
                 <button id="refreshBtn" class="btn btn-primary">
                     <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button id="exportAllBtn" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> Export All
+                </button>
+                <button id="exportCSVBtn" class="btn btn-secondary">
+                    <i class="fas fa-file-csv"></i> Export CSV
                 </button>
             </div>
             <div class="table-container">
@@ -1341,17 +1452,35 @@
                         <tr>
                             <th><i class="fas fa-clock"></i> Time</th>
                             <th><i class="fas fa-user"></i> User</th>
-                            <th><i class="fas fa-desktop"></i> Device</th>
-                            <th><i class="fas fa-globe"></i> Domain</th>
-                            <th><i class="fas fa-tag"></i> Source</th>
+                            <th><i class="fas fa-desktop"></i> Application</th>
+                            <th><i class="fas fa-globe"></i> Domain/URL</th>
+                            <th><i class="fas fa-tag"></i> Activity Type</th>
                             <th><i class="fas fa-hourglass-half"></i> Duration</th>
-                            <th><i class="fas fa-info-circle"></i> Reason</th>
+                            <th><i class="fas fa-info-circle"></i> Details</th>
+                            <th><i class="fas fa-cog"></i> Actions</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
             <div class="pagination" id="pagination"></div>
+        </div>
+
+        <!-- Detailed View Modal -->
+        <div id="detailModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-info-circle"></i> Activity Details</h3>
+                    <button class="modal-close" id="closeModal">&times;</button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="exportEntry">Export Entry</button>
+                    <button class="btn btn-primary" id="closeModalBtn">Close</button>
+                </div>
+            </div>
         </div>
 
         <div class="card productivity-insights">

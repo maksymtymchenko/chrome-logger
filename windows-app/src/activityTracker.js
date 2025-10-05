@@ -279,9 +279,9 @@ class ActivityTracker {
                     }
                 }
             } else if (this.currentWindow) {
-                // Update duration for current window
+                // Update duration for current window (record every 30 seconds)
                 const duration = now - this.lastActivity;
-                if (duration >= config.minActivityDuration) {
+                if (duration >= 30000) { // Record every 30 seconds
                     await this.recordActivity(this.currentWindow, duration);
                     this.lastActivity = now;
                 }
@@ -324,6 +324,7 @@ class ActivityTracker {
             deviceId: this.getDeviceId(),
             domain: 'windows-desktop',
             timestamp: Date.now(),
+            durationMs: duration, // Add durationMs at root level
             type: 'window_activity',
             data: {
                 application: window.owner.name,
@@ -419,6 +420,26 @@ class ActivityTracker {
                 await execAsync(`gnome-screenshot -f "${filepath}"`);
             }
 
+            // Create activity event for screenshot
+            const screenshotActivity = {
+                username: username,
+                deviceId: this.getDeviceId(),
+                domain: 'windows-desktop',
+                timestamp: timestamp,
+                durationMs: 1000, // Screenshots typically take ~1 second
+                type: 'screenshot',
+                reason: reason,
+                data: {
+                    filename: filename,
+                    reason: reason,
+                    application: this.currentWindow ? .owner ? .name || 'Unknown',
+                    title: this.currentWindow ? .title || 'Screenshot'
+                }
+            };
+
+            // Add to activity buffer
+            this.activityBuffer.push(screenshotActivity);
+
             const screenshotData = {
                 username: username,
                 timestamp: timestamp,
@@ -429,7 +450,8 @@ class ActivityTracker {
 
             this.screenshotBuffer.push(screenshotData);
 
-            // Send screenshot data
+            // Send both activity and screenshot data
+            await this.sendActivityData();
             await this.sendScreenshotData();
 
         } catch (error) {

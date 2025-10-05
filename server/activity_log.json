@@ -11,5 +11,225 @@
       "filename": "1759342860239_TestUser_screenshot.png",
       "reason": "scheduled"
     }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:29:43.014Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Google Chrome",
+      "title": "Google Chrome",
+      "duration": 5005,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:29:47.985Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Cursor",
+      "title": "Cursor",
+      "duration": 5002,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:29:52.985Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Cursor",
+      "title": "Cursor",
+      "duration": 5003,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:29:57.997Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Google Chrome",
+      "title": "Google Chrome",
+      "duration": 5003,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:30:03.011Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Google Chrome",
+      "title": "Google Chrome",
+      "duration": 5003,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:30:08.025Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Cursor",
+      "title": "Cursor",
+      "duration": 5004,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:30:13.058Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Cursor",
+      "title": "Cursor",
+      "duration": 5001,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:30:18.026Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Cursor",
+      "title": "Cursor",
+      "duration": 5001,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:30:23.015Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Cursor",
+      "title": "Cursor",
+      "duration": 5005,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-05T17:30:28.171Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Cursor",
+      "title": "Cursor",
+      "duration": 5004,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
   }
 ]
