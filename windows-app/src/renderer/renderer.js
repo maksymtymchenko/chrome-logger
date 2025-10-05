@@ -62,7 +62,7 @@ class SimpleActivityTracker {
             if (config && config.username && config.username !== 'Unknown') {
                 console.log('Setup already complete, showing main content');
                 console.log('Username found:', config.username);
-                this.showMainContent();
+                await this.showMainContent();
                 this.setupComplete = true;
             } else {
                 console.log('Setup not complete, showing setup dialog');
@@ -122,7 +122,7 @@ class SimpleActivityTracker {
         }, 100);
     }
 
-    showMainContent() {
+    async showMainContent() {
         const setupDialog = document.getElementById('setupDialog');
         const mainContent = document.getElementById('mainContent');
 
@@ -131,18 +131,45 @@ class SimpleActivityTracker {
         mainContent.classList.add('fade-in');
 
         // Update the current username display
+        await this.loadUsername();
+    }
+
+    async loadUsername(retryCount = 0) {
         const currentUsernameElement = document.getElementById('currentUsername');
-        if (currentUsernameElement) {
+        if (!currentUsernameElement) return;
+
+        try {
             // Get the current username from config
-            ipcRenderer.invoke('get-status').then(status => {
-                console.log('Received status:', status);
-                console.log('Username from config:', status.config.username);
-                currentUsernameElement.textContent = status.config.username || 'Unknown';
-            }).catch(error => {
-                console.error('Error getting status:', error);
+            const status = await ipcRenderer.invoke('get-status');
+            console.log('Received status:', status);
+            console.log('Username from config:', status.config ? .username);
+
+            if (status && status.config && status.config.username) {
+                currentUsernameElement.textContent = status.config.username;
+                console.log('Username loaded successfully:', status.config.username);
+            } else {
+                currentUsernameElement.textContent = 'Unknown';
+                console.log('No username found in config');
+            }
+        } catch (error) {
+            console.error('Error getting status:', error);
+
+            // Retry up to 3 times with increasing delay
+            if (retryCount < 3) {
+                console.log(`Retrying username load (attempt ${retryCount + 1}/3)...`);
+                setTimeout(() => {
+                    this.loadUsername(retryCount + 1);
+                }, 1000 * (retryCount + 1)); // 1s, 2s, 3s delays
+            } else {
                 currentUsernameElement.textContent = 'Error loading username';
-            });
+                console.error('Failed to load username after 3 attempts');
+            }
         }
+    }
+
+    // Method to refresh username display (useful when returning from setup)
+    async refreshUsername() {
+        await this.loadUsername();
     }
 
     async useLaptopName() {
@@ -202,8 +229,8 @@ class SimpleActivityTracker {
             // Show success and close after delay
             this.showSuccess('Setup complete! Starting tracking...');
 
-            setTimeout(() => {
-                this.showMainContent();
+            setTimeout(async() => {
+                await this.showMainContent();
                 this.setupComplete = true;
 
                 // Auto-minimize after 3 seconds
