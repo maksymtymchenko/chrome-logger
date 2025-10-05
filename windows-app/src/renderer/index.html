@@ -25,10 +25,16 @@
                     <div id="errorMessage" class="error-message" role="alert" aria-live="polite"></div>
                 </form>
 
-                <button id="saveUsername" class="btn btn-primary" type="button">
-                    <i class="fas fa-check" aria-hidden="true"></i>
-                    Start Tracking
-                </button>
+                <div class="button-group">
+                    <button id="useLaptopName" class="btn btn-secondary" type="button">
+                        <i class="fas fa-laptop" aria-hidden="true"></i>
+                        Use Laptop Name
+                    </button>
+                    <button id="saveUsername" class="btn btn-primary" type="button">
+                        <i class="fas fa-check" aria-hidden="true"></i>
+                        Start Tracking
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -40,7 +46,7 @@
                 <p>Activity tracking is now running in the background.</p>
                 <p>You can minimize this window to the system tray.</p>
                 <div class="user-info">
-                    <p>Logged in as: <strong id="currentUsername">TestUser</strong></p>
+                    <p>Logged in as: <strong id="currentUsername">Loading...</strong></p>
                     <button id="changeUsername" class="btn btn-secondary" type="button" aria-label="Change username">
                         <i class="fas fa-edit" aria-hidden="true"></i>
                         Change Name

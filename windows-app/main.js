@@ -103,9 +103,12 @@ class WindowsActivityTracker {
     setupIpcHandlers() {
         // Get current status
         ipcMain.handle('get-status', async() => {
+            const config = this.configManager.getConfig();
+            console.log('Sending status with config:', config);
+            console.log('Username in config:', config.username);
             return {
                 isTracking: this.activityTracker ? this.activityTracker.isTracking : false,
-                config: this.configManager.getConfig()
+                config: config
             };
         });
 
@@ -129,6 +132,12 @@ class WindowsActivityTracker {
                 return { isTracking: this.activityTracker.isTracking };
             }
             return { isTracking: false };
+        });
+
+        // Get laptop name
+        ipcMain.handle('get-laptop-name', async() => {
+            const os = require('os');
+            return os.hostname();
         });
 
         // Handle minimize to tray

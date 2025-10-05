@@ -303,6 +303,19 @@ body {
     line-height: 1;
 }
 
+.button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.button-group .btn {
+    flex: 1;
+    min-width: 140px;
+}
+
 
 /* Responsive */
 

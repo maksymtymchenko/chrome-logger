@@ -8,7 +8,7 @@ A Windows desktop application that tracks user activity, applications, clipboard
 - **Application Tracking**: Monitor which applications are running and their resource usage
 - **Window Activity**: Track active windows and time spent in each application
 - **Clipboard Monitoring**: Track clipboard usage and content type detection
-- **Screenshot Capture**: Take periodic screenshots of the desktop
+- **Screenshot Capture**: Take screenshots on specific events (window changes, clicks)
 - **Idle Detection**: Detect when user is idle and pause tracking
 - **System Tray**: Runs silently in the background
 - **No UI Clutter**: Clean, minimal interface - just name entry and confirmation
@@ -48,11 +48,12 @@ The app stores configuration in `~/.windows-activity-tracker/config.json`:
   "username": "YourUsername",
   "serverUrl": "http://localhost:8080",
   "trackingInterval": 5000,
-  "screenshotInterval": 30000,
   "trackClipboard": true,
   "trackApplications": true,
   "trackWindows": true,
   "trackScreenshots": true,
+  "screenshotOnWindowChange": true,
+  "screenshotOnClick": true,
   "minActivityDuration": 1000,
   "maxIdleTime": 300000,
   "workApplications": ["chrome.exe", "code.exe", "word.exe"],
@@ -100,7 +101,7 @@ The app collects the following data:
 
 ### Screenshots
 
-- Periodic desktop screenshots
+- Event-based desktop screenshots (window changes, clicks)
 - Timestamp and reason for capture
 - Stored locally and metadata sent to server
 

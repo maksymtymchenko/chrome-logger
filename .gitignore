@@ -1,6 +1,14 @@
-server/screenshots
-server/node_modules
-windows-app/node_modules
-windows-app/dist
+# Dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Build outputs
+windows-app/dist/
+server/screenshots/
+
+# Environment files
 server/.env
+
+# OS files
 .DS_Store

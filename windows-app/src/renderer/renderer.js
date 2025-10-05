@@ -37,6 +37,14 @@ class SimpleActivityTracker {
             });
         }
 
+        // Use laptop name button
+        const useLaptopNameBtn = document.getElementById('useLaptopName');
+        if (useLaptopNameBtn) {
+            useLaptopNameBtn.addEventListener('click', () => {
+                this.useLaptopName();
+            });
+        }
+
         // Input validation
         usernameInput.addEventListener('input', () => {
             this.hideError();
@@ -50,20 +58,54 @@ class SimpleActivityTracker {
 
             console.log('Setup status check:', { config, username: config ? .username });
 
+            // Show main content if username is set and not 'Unknown'
             if (config && config.username && config.username !== 'Unknown') {
-                // Setup already complete
                 console.log('Setup already complete, showing main content');
+                console.log('Username found:', config.username);
                 this.showMainContent();
                 this.setupComplete = true;
             } else {
-                // Show setup dialog
                 console.log('Setup not complete, showing setup dialog');
-                this.showSetupDialog();
+                console.log('Reason: config exists:', !!config, 'username exists:', !!config ? .username, 'username value:', config ? .username);
+                await this.showSetupDialogWithLaptopName();
             }
         } catch (error) {
             console.error('Error checking setup status:', error);
-            this.showSetupDialog();
+            await this.showSetupDialogWithLaptopName();
         }
+    }
+
+    async showSetupDialogWithLaptopName() {
+        const setupDialog = document.getElementById('setupDialog');
+        const mainContent = document.getElementById('mainContent');
+
+        mainContent.style.display = 'none';
+        setupDialog.style.display = 'flex';
+        setupDialog.classList.add('fade-in');
+
+        // Get laptop name and set as default
+        try {
+            const laptopName = await ipcRenderer.invoke('get-laptop-name');
+            const usernameInput = document.getElementById('usernameInput');
+
+            if (laptopName && usernameInput) {
+                usernameInput.value = laptopName;
+                usernameInput.placeholder = `Enter your name (suggested: ${laptopName})`;
+
+                // Add a helpful message
+                const description = document.getElementById('setup-description');
+                if (description) {
+                    description.innerHTML = `Enter your name to start tracking your activity<br><small style="color: #666; font-size: 12px;">💡 Using your laptop name: <strong>${laptopName}</strong></small>`;
+                }
+            }
+        } catch (error) {
+            console.log('Could not get laptop name:', error);
+        }
+
+        // Focus after animation
+        setTimeout(() => {
+            document.getElementById('usernameInput').focus();
+        }, 100);
     }
 
     showSetupDialog() {
@@ -93,8 +135,37 @@ class SimpleActivityTracker {
         if (currentUsernameElement) {
             // Get the current username from config
             ipcRenderer.invoke('get-status').then(status => {
+                console.log('Received status:', status);
+                console.log('Username from config:', status.config.username);
                 currentUsernameElement.textContent = status.config.username || 'Unknown';
+            }).catch(error => {
+                console.error('Error getting status:', error);
+                currentUsernameElement.textContent = 'Error loading username';
             });
+        }
+    }
+
+    async useLaptopName() {
+        try {
+            const laptopName = await ipcRenderer.invoke('get-laptop-name');
+            if (laptopName) {
+                const usernameInput = document.getElementById('usernameInput');
+                usernameInput.value = laptopName;
+                this.hideError();
+
+                // Show success message
+                this.showSuccess(`Using laptop name: ${laptopName}`);
+
+                // Auto-save after a short delay
+                setTimeout(() => {
+                    this.saveUsername();
+                }, 1000);
+            } else {
+                this.showError('Could not get laptop name. Please enter manually.');
+            }
+        } catch (error) {
+            console.error('Error getting laptop name:', error);
+            this.showError('Could not get laptop name. Please enter manually.');
         }
     }
 

@@ -9,11 +9,12 @@ class ConfigManager {
             username: 'Unknown',
             serverUrl: 'http://localhost:8080',
             trackingInterval: 5000, // 5 seconds
-            screenshotInterval: 30000, // 30 seconds
             trackClipboard: true,
             trackApplications: true,
             trackWindows: true,
             trackScreenshots: true,
+            screenshotOnWindowChange: true, // Take screenshots when window changes
+            screenshotOnClick: true, // Take screenshots on clicks (when implemented)
             minActivityDuration: 1000, // 1 second minimum
             maxIdleTime: 300000, // 5 minutes
             workApplications: [
@@ -39,6 +40,7 @@ class ConfigManager {
 
     loadConfig() {
         try {
+            console.log('Loading config from:', this.configPath);
             // Ensure directory exists
             const configDir = path.dirname(this.configPath);
             if (!fs.existsSync(configDir)) {
@@ -48,13 +50,17 @@ class ConfigManager {
             if (fs.existsSync(this.configPath)) {
                 const data = fs.readFileSync(this.configPath, 'utf8');
                 const loadedConfig = JSON.parse(data);
+                console.log('Loaded config from file:', loadedConfig);
                 // Merge with defaults to ensure all properties exist
-                return {...this.defaultConfig, ...loadedConfig };
+                const mergedConfig = {...this.defaultConfig, ...loadedConfig };
+                console.log('Merged config:', mergedConfig);
+                return mergedConfig;
             }
         } catch (error) {
             console.error('Error loading config:', error);
         }
 
+        console.log('Using default config');
         // Return default config and save it
         this.saveConfig(this.defaultConfig);
         return this.defaultConfig;

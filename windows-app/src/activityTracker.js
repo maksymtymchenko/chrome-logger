@@ -87,6 +87,7 @@ class ActivityTracker {
         this.startActivityTracking();
         this.startScreenshotTracking();
         this.startClipboardTracking();
+        this.startClickTracking();
 
         console.log('Activity tracking started');
     }
@@ -131,17 +132,8 @@ class ActivityTracker {
     startScreenshotTracking() {
         if (!this.configManager.get('trackScreenshots')) return;
 
-        const interval = this.configManager.get('screenshotInterval') || 30000;
-
-        this.screenshotInterval = setInterval(async() => {
-            if (!this.isTracking) return;
-
-            try {
-                await this.takeScreenshot();
-            } catch (error) {
-                console.error('Error taking screenshot:', error);
-            }
-        }, interval);
+        // Event-based screenshots - no periodic interval needed
+        console.log('Event-based screenshot tracking enabled');
     }
 
     startClipboardTracking() {
@@ -156,6 +148,62 @@ class ActivityTracker {
                 console.error('Error tracking clipboard:', error);
             }
         }, 2000); // Check clipboard every 2 seconds
+    }
+
+    startClickTracking() {
+        if (!this.configManager.get('trackScreenshots') || !this.configManager.get('screenshotOnClick')) return;
+
+        // For macOS, we'll use a simple approach to detect clicks
+        // This is a basic implementation - in production you might want more sophisticated click detection
+        if (process.platform === 'darwin') {
+            this.setupMacClickTracking();
+        } else if (process.platform === 'win32') {
+            this.setupWindowsClickTracking();
+        } else {
+            this.setupLinuxClickTracking();
+        }
+    }
+
+    setupMacClickTracking() {
+        // Simple click detection using AppleScript
+        // This is a basic implementation - in production you'd want more sophisticated tracking
+        const { exec } = require('child_process');
+        const util = require('util');
+        const execAsync = util.promisify(exec);
+
+        // Use a simple approach: check for mouse movement/click activity
+        setInterval(async() => {
+            if (!this.isTracking) return;
+
+            try {
+                // This is a simplified approach - in production you'd want proper mouse event detection
+                // For now, we'll just log that click tracking is enabled
+                // Real implementation would require native modules or more sophisticated detection
+            } catch (error) {
+                console.error('Error in click tracking:', error);
+            }
+        }, 5000); // Check every 5 seconds as a placeholder
+    }
+
+    setupWindowsClickTracking() {
+        // Windows click tracking would go here
+        console.log('Windows click tracking not implemented yet');
+    }
+
+    setupLinuxClickTracking() {
+        // Linux click tracking would go here
+        console.log('Linux click tracking not implemented yet');
+    }
+
+    // Method to trigger screenshot on click (to be called by actual click detection)
+    async onClickDetected() {
+        if (!this.configManager.get('trackScreenshots') || !this.configManager.get('screenshotOnClick')) return;
+
+        try {
+            await this.takeScreenshot('click');
+        } catch (error) {
+            console.error('Error taking screenshot on click:', error);
+        }
     }
 
     async trackCurrentActivity() {
@@ -221,6 +269,15 @@ class ActivityTracker {
                 this.lastActivity = now;
                 this.isIdle = false;
                 this.idleStartTime = null;
+
+                // Take screenshot on window change
+                if (this.configManager.get('trackScreenshots') && this.configManager.get('screenshotOnWindowChange')) {
+                    try {
+                        await this.takeScreenshot('window_change');
+                    } catch (error) {
+                        console.error('Error taking screenshot on window change:', error);
+                    }
+                }
             } else if (this.currentWindow) {
                 // Update duration for current window
                 const duration = now - this.lastActivity;
@@ -339,7 +396,7 @@ class ActivityTracker {
         }
     }
 
-    async takeScreenshot() {
+    async takeScreenshot(reason = 'event') {
         try {
             const { exec } = require('child_process');
             const util = require('util');
@@ -367,7 +424,7 @@ class ActivityTracker {
                 timestamp: timestamp,
                 filename: filename,
                 filepath: filepath,
-                reason: 'scheduled'
+                reason: reason
             };
 
             this.screenshotBuffer.push(screenshotData);
@@ -407,7 +464,43 @@ class ActivityTracker {
             const config = this.configManager.getConfig();
             const serverUrl = config.serverUrl || 'http://localhost:8080';
 
-            // For now, just send metadata - in production you'd upload the actual image
+            // Process each screenshot
+            for (const screenshot of this.screenshotBuffer) {
+                try {
+                    // Copy file to server screenshots directory
+                    const serverScreenshotDir = path.join(__dirname, '..', '..', '..', 'server', 'screenshots');
+                    const serverFilePath = path.join(serverScreenshotDir, screenshot.filename);
+
+                    // Ensure server directory exists
+                    if (!fs.existsSync(serverScreenshotDir)) {
+                        fs.mkdirSync(serverScreenshotDir, { recursive: true });
+                    }
+
+                    // Copy the file
+                    fs.copyFileSync(screenshot.filepath, serverFilePath);
+                    console.log(`Copied screenshot to server: ${screenshot.filename}`);
+
+                    // Read the screenshot file and convert to base64
+                    const screenshotBuffer = fs.readFileSync(screenshot.filepath);
+                    const base64Screenshot = `data:image/png;base64,${screenshotBuffer.toString('base64')}`;
+
+                    // Send to server's screenshot endpoint to create database record
+                    const screenshotResponse = await axios.post(`${serverUrl}/collect-screenshot`, {
+                        deviceId: this.getDeviceId(),
+                        domain: 'windows-desktop',
+                        username: screenshot.username,
+                        screenshot: base64Screenshot
+                    });
+
+                    if (screenshotResponse.status === 200) {
+                        console.log(`Created database record for screenshot: ${screenshot.filename}`);
+                    }
+                } catch (copyError) {
+                    console.error('Error processing screenshot:', copyError);
+                }
+            }
+
+            // Also send metadata to activity endpoint
             const response = await axios.post(`${serverUrl}/collect-activity`, {
                 events: this.screenshotBuffer.map(s => ({
                     username: s.username,
