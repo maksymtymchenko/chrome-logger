@@ -571,12 +571,38 @@
             background: white;
             transition: all 0.3s ease;
             cursor: pointer;
+            position: relative;
         }
         
         .screenshot-item:hover {
             transform: translateY(-5px);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
             border-color: #4f46e5;
+        }
+        
+        .screenshot-delete-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+        
+        .screenshot-item:hover .screenshot-delete-btn {
+            opacity: 1;
+        }
+        
+        .screenshot-delete-btn:hover {
+            background: rgba(220, 38, 38, 1);
+            transform: scale(1.05);
         }
         
         .screenshot-item img {
@@ -685,79 +711,6 @@
         .btn-danger:disabled {
             background: #9ca3af;
             cursor: not-allowed;
-        }
-        /* Break Pattern Analysis Styles */
-        
-        .break-patterns {
-            margin-bottom: 30px;
-        }
-        
-        .break-recommendations {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 15px;
-        }
-        
-        .break-recommendations h4 {
-            color: #1e293b;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .break-recommendations ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .break-recommendations li {
-            margin-bottom: 8px;
-            color: #6b7280;
-            line-height: 1.5;
-        }
-        
-        .recent-breaks {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 15px;
-        }
-        
-        .recent-breaks h4 {
-            color: #1e293b;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .break-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .break-item:last-child {
-            border-bottom: none;
-        }
-        
-        .break-time {
-            color: #1e293b;
-            font-weight: 500;
-        }
-        
-        .break-duration {
-            color: #6b7280;
-            background: #f1f5f9;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
         }
         
         @keyframes spin {
@@ -955,6 +908,14 @@
         
         [data-theme="dark"] .screenshot-item:hover {
             border-color: var(--accent-primary);
+        }
+        
+        [data-theme="dark"] .screenshot-delete-btn {
+            background: rgba(239, 68, 68, 0.9);
+        }
+        
+        [data-theme="dark"] .screenshot-delete-btn:hover {
+            background: rgba(220, 38, 38, 1);
         }
         
         [data-theme="dark"] .screenshot-info {
@@ -1228,51 +1189,6 @@
         [data-theme="dark"] .user-management-info p {
             color: var(--text-secondary);
         }
-        /* Break Pattern Analysis Dark Mode */
-        
-        [data-theme="dark"] .break-patterns {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-        }
-        
-        [data-theme="dark"] .break-patterns h2 {
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] .break-recommendations {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-        }
-        
-        [data-theme="dark"] .break-recommendations h4 {
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] .break-recommendations li {
-            color: var(--text-secondary);
-        }
-        
-        [data-theme="dark"] .recent-breaks {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-        }
-        
-        [data-theme="dark"] .recent-breaks h4 {
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] .break-item {
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        [data-theme="dark"] .break-time {
-            color: var(--text-primary);
-        }
-        
-        [data-theme="dark"] .break-duration {
-            color: var(--text-secondary);
-            background: var(--bg-secondary);
-        }
         /* Pagination dark mode */
         
         [data-theme="dark"] .activity-log .pagination {
@@ -1350,28 +1266,28 @@
                 <div class="stat-icon events">
                     <i class="fas fa-chart-bar"></i>
                 </div>
-                <div class="stat-number" id="totalEvents">-</div>
+                <div class="stat-number" id="statTotalEvents">-</div>
                 <div class="stat-label">Total Events</div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon users">
                     <i class="fas fa-users"></i>
                 </div>
-                <div class="stat-number" id="totalUsers">-</div>
+                <div class="stat-number" id="statTotalUsers">-</div>
                 <div class="stat-label">Active Users</div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon screenshots">
                     <i class="fas fa-camera"></i>
                 </div>
-                <div class="stat-number" id="totalScreenshots">-</div>
+                <div class="stat-number" id="statTotalScreenshots">-</div>
                 <div class="stat-label">Screenshots</div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon domains">
                     <i class="fas fa-globe"></i>
                 </div>
-                <div class="stat-number" id="totalDomains">-</div>
+                <div class="stat-number" id="statTotalDomains">-</div>
                 <div class="stat-label">Unique Domains</div>
             </div>
         </div>
@@ -1560,75 +1476,6 @@
             </div>
         </div>
 
-        <!-- Break Pattern Analysis Section -->
-        <div class="card break-patterns">
-            <h2><i class="fas fa-coffee"></i> Break Pattern Analysis</h2>
-            <div class="controls">
-                <select id="breakUserFilter" class="filter-select">
-                    <option value="">Select User</option>
-                </select>
-                <select id="breakPeriodFilter" class="filter-select">
-                    <option value="day">Today</option>
-                    <option value="week" selected>This Week</option>
-                    <option value="month">This Month</option>
-                </select>
-                <button id="loadBreakPatterns" class="btn btn-primary">
-                    <i class="fas fa-chart-bar"></i> Analyze Breaks
-                </button>
-            </div>
-
-            <div id="breakPatternsContent" style="display: none;">
-                <!-- Break Statistics -->
-                <div class="stats-grid" style="margin-bottom: 30px;">
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                            <i class="fas fa-pause"></i>
-                        </div>
-                        <div class="stat-number" id="totalBreaks">0</div>
-                        <div class="stat-label">Total Breaks</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="stat-number" id="avgBreakLength">0 min</div>
-                        <div class="stat-label">Avg Break Length</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="stat-number" id="breakFrequency">0/day</div>
-                        <div class="stat-label">Break Frequency</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
-                            <i class="fas fa-hourglass-half"></i>
-                        </div>
-                        <div class="stat-number" id="totalBreakTime">0 min</div>
-                        <div class="stat-label">Total Break Time</div>
-                    </div>
-                </div>
-
-                <!-- Break Patterns Chart -->
-                <div class="chart-container" style="margin-bottom: 30px;">
-                    <h4>Break Distribution by Time of Day</h4>
-                    <canvas id="breakPatternsChart" width="400" height="200"></canvas>
-                </div>
-
-                <!-- Break Recommendations -->
-                <div class="break-recommendations" style="margin-bottom: 30px;">
-                    <h4><i class="fas fa-lightbulb"></i> Break Recommendations</h4>
-                    <div id="breakRecommendationsList"></div>
-                </div>
-
-                <!-- Recent Breaks -->
-                <div class="recent-breaks">
-                    <h4><i class="fas fa-history"></i> Recent Breaks</h4>
-                    <div id="recentBreaksList"></div>
-                </div>
-            </div>
-        </div>
 
         <div class="card user-management" id="userManagementSection" style="display: none;">
             <h2><i class="fas fa-users-cog"></i> User Management</h2>
@@ -1653,6 +1500,9 @@
                 </select>
                 <button id="refreshScreenshotsBtn" class="btn btn-primary">
                     <i class="fas fa-sync-alt"></i> Refresh Screenshots
+                </button>
+                <button id="deleteAllScreenshotsBtn" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete All
                 </button>
                 <span id="screenshotInfo" style="color: #6b7280; margin-left: 15px;"></span>
             </div>

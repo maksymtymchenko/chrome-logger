@@ -443,13 +443,21 @@ app.get('/api/screenshots', async(req, res) => {
                 return fs.existsSync(filePath);
             });
 
-            return res.json({ count: existingFiles.length, files: existingFiles });
+            // Get total count of screenshots (not just returned files)
+            const totalCount = await ScreenshotModel.countDocuments(filter);
+
+            return res.json({ count: totalCount, files: existingFiles });
         }
 
-        const files = fs.readdirSync(SCREENSHOT_DIR)
+        const allFiles = fs.readdirSync(SCREENSHOT_DIR)
             .filter(f => f.toLowerCase().endsWith('.png'))
-            .map(f => ({ filename: f, url: `/screenshots/${f}`, mtime: fs.statSync(path.join(SCREENSHOT_DIR, f)).mtimeMs }))
-            .filter(meta => {
+            .map(f => ({ filename: f, url: `/screenshots/${f}`, mtime: fs.statSync(path.join(SCREENSHOT_DIR, f)).mtimeMs }));
+
+        // Get total count of all screenshots (not filtered by user)
+        const totalCount = allFiles.length;
+
+        // Filter by user if specified
+        const filteredFiles = allFiles.filter(meta => {
                 if (!user) return true;
                 try {
                     const base = path.basename(meta.filename, '.png');
@@ -461,10 +469,95 @@ app.get('/api/screenshots', async(req, res) => {
             .sort((a, b) => b.mtime - a.mtime)
             .slice(0, limit)
             .map(({ filename, url, mtime }) => ({ filename, url, mtime }));
-        return res.json({ count: files.length, files });
+
+        return res.json({ count: totalCount, files: filteredFiles });
     } catch (e) {
         console.error('Failed to list screenshots:', e);
         return res.status(500).json({ error: 'failed to list screenshots' });
+    }
+});
+
+// Delete screenshot endpoint
+app.delete('/api/screenshots/:filename', async(req, res) => {
+    try {
+        const { filename } = req.params;
+
+        if (!filename || !filename.endsWith('.png')) {
+            return res.status(400).json({ error: 'Invalid filename' });
+        }
+
+        const filePath = path.join(SCREENSHOT_DIR, filename);
+
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Screenshot not found' });
+        }
+
+        // Delete file from filesystem
+        fs.unlinkSync(filePath);
+        console.log(`Deleted screenshot file: ${filename}`);
+
+        // Delete from database if using MongoDB
+        if (useMongo) {
+            const result = await ScreenshotModel.deleteOne({ filename });
+            console.log(`Deleted screenshot record: ${result.deletedCount} record(s)`);
+        }
+
+        return res.json({
+            success: true,
+            message: 'Screenshot deleted successfully',
+            filename: filename
+        });
+
+    } catch (error) {
+        console.error('Error deleting screenshot:', error);
+        return res.status(500).json({ error: 'Failed to delete screenshot' });
+    }
+});
+
+// Bulk delete screenshots endpoint
+app.delete('/api/screenshots', async(req, res) => {
+    try {
+        const { filenames, user } = req.body;
+
+        if (!filenames || !Array.isArray(filenames)) {
+            return res.status(400).json({ error: 'Invalid filenames array' });
+        }
+
+        let deletedCount = 0;
+        const errors = [];
+
+        for (const filename of filenames) {
+            try {
+                const filePath = path.join(SCREENSHOT_DIR, filename);
+
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    deletedCount++;
+                    console.log(`Deleted screenshot file: ${filename}`);
+                }
+
+                // Delete from database if using MongoDB
+                if (useMongo) {
+                    await ScreenshotModel.deleteOne({ filename });
+                }
+
+            } catch (error) {
+                console.error(`Error deleting screenshot ${filename}:`, error);
+                errors.push({ filename, error: error.message });
+            }
+        }
+
+        return res.json({
+            success: true,
+            message: `Deleted ${deletedCount} screenshot(s)`,
+            deletedCount,
+            errors: errors.length > 0 ? errors : undefined
+        });
+
+    } catch (error) {
+        console.error('Error bulk deleting screenshots:', error);
+        return res.status(500).json({ error: 'Failed to delete screenshots' });
     }
 });
 
@@ -723,59 +816,6 @@ app.delete('/api/admin/delete-user/:username', requireRole(['ADMIN']), async(req
     }
 });
 
-// Break Pattern Analysis endpoint
-app.get('/api/analytics/breaks/:username', async(req, res) => {
-    try {
-        const { username } = req.params;
-        const { period = 'week', startDate, endDate } = req.query;
-
-        let dateFilter = {};
-        const now = new Date();
-
-        switch (period) {
-            case 'day':
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                dateFilter = { timestamp: { $gte: today } };
-                break;
-            case 'week':
-                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                dateFilter = { timestamp: { $gte: weekAgo } };
-                break;
-            case 'month':
-                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                dateFilter = { timestamp: { $gte: monthAgo } };
-                break;
-            case 'custom':
-                if (startDate && endDate) {
-                    dateFilter = {
-                        timestamp: {
-                            $gte: new Date(startDate),
-                            $lte: new Date(endDate)
-                        }
-                    };
-                }
-                break;
-        }
-
-        const events = await EventModel.find({
-            username,
-            ...dateFilter
-        }).sort({ timestamp: 1 });
-
-        const breakAnalysis = calculateBreakPatterns(events);
-
-        res.json({
-            success: true,
-            username,
-            period,
-            analysis: breakAnalysis
-        });
-
-    } catch (error) {
-        console.error('Error getting break patterns:', error);
-        res.status(500).json({ error: 'Failed to get break patterns' });
-    }
-});
 
 app.get('/api/analytics/productivity/:username', async(req, res) => {
     try {
@@ -863,163 +903,6 @@ app.get('/api/analytics/productivity/:username', async(req, res) => {
 });
 
 // Helper function to calculate productivity insights
-function calculateBreakPatterns(events) {
-    if (events.length === 0) {
-        return {
-            totalBreaks: 0,
-            averageBreakLength: 0,
-            totalBreakTime: 0,
-            breakFrequency: 0,
-            longestBreak: 0,
-            shortestBreak: 0,
-            breakPatterns: [],
-            hourlyBreakDistribution: {},
-            breakRecommendations: []
-        };
-    }
-
-    const breaks = [];
-    const breakThreshold = 5 * 60 * 1000; // 5 minutes in milliseconds
-    const workThreshold = 2 * 60 * 1000; // 2 minutes of work to consider it a break
-
-    // Group events by day
-    const eventsByDay = {};
-    events.forEach(event => {
-        const day = new Date(event.timestamp).toDateString();
-        if (!eventsByDay[day]) {
-            eventsByDay[day] = [];
-        }
-        eventsByDay[day].push(event);
-    });
-
-    // Analyze each day for breaks
-    Object.values(eventsByDay).forEach(dayEvents => {
-        dayEvents.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-        let lastActivity = null;
-        let breakStart = null;
-
-        dayEvents.forEach(event => {
-            const eventTime = new Date(event.timestamp);
-
-            if (lastActivity) {
-                const timeDiff = eventTime - lastActivity;
-
-                // If there's a gap longer than break threshold, it's a break
-                if (timeDiff >= breakThreshold) {
-                    if (!breakStart) {
-                        breakStart = lastActivity;
-                    }
-                } else {
-                    // If there's activity and we were in a break, end the break
-                    if (breakStart) {
-                        const breakLength = eventTime - breakStart;
-                        if (breakLength >= workThreshold) {
-                            breaks.push({
-                                start: breakStart,
-                                end: eventTime,
-                                duration: breakLength,
-                                day: new Date(breakStart).toDateString()
-                            });
-                        }
-                        breakStart = null;
-                    }
-                }
-            }
-
-            lastActivity = eventTime;
-        });
-
-        // Handle break at end of day
-        if (breakStart) {
-            const endOfDay = new Date(dayEvents[dayEvents.length - 1].timestamp);
-            const breakLength = endOfDay - breakStart;
-            if (breakLength >= workThreshold) {
-                breaks.push({
-                    start: breakStart,
-                    end: endOfDay,
-                    duration: breakLength,
-                    day: new Date(breakStart).toDateString()
-                });
-            }
-        }
-    });
-
-    // Calculate statistics
-    const totalBreaks = breaks.length;
-    const totalBreakTime = breaks.reduce((sum, break_) => sum + break_.duration, 0);
-    const averageBreakLength = totalBreaks > 0 ? totalBreakTime / totalBreaks : 0;
-    const longestBreak = breaks.length > 0 ? Math.max(...breaks.map(b => b.duration)) : 0;
-    const shortestBreak = breaks.length > 0 ? Math.min(...breaks.map(b => b.duration)) : 0;
-
-    // Calculate break frequency (breaks per day)
-    const uniqueDays = new Set(breaks.map(b => b.day));
-    const breakFrequency = uniqueDays.size > 0 ? totalBreaks / uniqueDays.size : 0;
-
-    // Hourly break distribution
-    const hourlyBreakDistribution = {};
-    breaks.forEach(break_ => {
-        const hour = new Date(break_.start).getHours();
-        hourlyBreakDistribution[hour] = (hourlyBreakDistribution[hour] || 0) + 1;
-    });
-
-    // Break patterns (morning, afternoon, evening)
-    const breakPatterns = {
-        morning: breaks.filter(b => {
-            const hour = new Date(b.start).getHours();
-            return hour >= 6 && hour < 12;
-        }).length,
-        afternoon: breaks.filter(b => {
-            const hour = new Date(b.start).getHours();
-            return hour >= 12 && hour < 18;
-        }).length,
-        evening: breaks.filter(b => {
-            const hour = new Date(b.start).getHours();
-            return hour >= 18 || hour < 6;
-        }).length
-    };
-
-    // Generate recommendations
-    const recommendations = [];
-
-    if (breakFrequency < 3) {
-        recommendations.push("Consider taking more frequent breaks to maintain productivity and reduce eye strain.");
-    }
-
-    if (averageBreakLength > 30 * 60 * 1000) { // 30 minutes
-        recommendations.push("Your breaks are quite long. Consider shorter, more frequent breaks for better focus.");
-    }
-
-    if (breakPatterns.morning === 0) {
-        recommendations.push("Try taking a morning break to maintain energy throughout the day.");
-    }
-
-    if (breakPatterns.afternoon === 0) {
-        recommendations.push("Afternoon breaks can help combat the post-lunch energy dip.");
-    }
-
-    if (longestBreak > 60 * 60 * 1000) { // 1 hour
-        recommendations.push("Very long breaks detected. Consider breaking them into shorter sessions.");
-    }
-
-    return {
-        totalBreaks,
-        averageBreakLength: Math.round(averageBreakLength / (60 * 1000)), // Convert to minutes
-        totalBreakTime: Math.round(totalBreakTime / (60 * 1000)), // Convert to minutes
-        breakFrequency: Math.round(breakFrequency * 10) / 10, // Round to 1 decimal
-        longestBreak: Math.round(longestBreak / (60 * 1000)), // Convert to minutes
-        shortestBreak: Math.round(shortestBreak / (60 * 1000)), // Convert to minutes
-        breakPatterns,
-        hourlyBreakDistribution,
-        breakRecommendations: recommendations,
-        dailyBreaks: breaks.map(b => ({
-            start: b.start,
-            end: b.end,
-            duration: Math.round(b.duration / (60 * 1000)), // Convert to minutes
-            day: b.day
-        }))
-    };
-}
 
 function calculateProductivityInsights(events) {
     if (!events || events.length === 0) {

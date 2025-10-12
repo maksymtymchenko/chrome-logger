@@ -10,6 +10,8 @@ class WindowsActivityTracker {
         this.activityTracker = null;
         this.configManager = new ConfigManager();
         this.isQuitting = false;
+        this.ipcHandlersSetup = false;
+        this.hasShownWindow = false;
     }
 
     async createWindow() {
@@ -32,16 +34,21 @@ class WindowsActivityTracker {
         // Load the app
         this.mainWindow.loadFile('src/renderer/index.html');
 
-        // Show window when ready
+        // Show window when ready (only on first launch)
         this.mainWindow.once('ready-to-show', () => {
-            this.mainWindow.show();
+            // Show window only if it's the first time or if explicitly requested
+            if (!this.hasShownWindow) {
+                this.mainWindow.show();
+                this.hasShownWindow = true;
+            }
         });
 
-        // Handle window close
+        // Handle window close - hide to tray instead of quitting
         this.mainWindow.on('close', (event) => {
             if (!this.isQuitting) {
                 event.preventDefault();
                 this.mainWindow.hide();
+                console.log('Window hidden to tray, app continues running in background');
             }
         });
 
@@ -50,15 +57,22 @@ class WindowsActivityTracker {
             this.mainWindow = null;
         });
 
-        // Create tray
-        this.createTray();
+        // Create tray (only if not already created)
+        if (!this.tray) {
+            this.createTray();
+        }
 
-        // Initialize activity tracker
-        this.activityTracker = new ActivityTracker(this.configManager);
-        await this.activityTracker.start();
+        // Initialize activity tracker (only if not already created)
+        if (!this.activityTracker) {
+            this.activityTracker = new ActivityTracker(this.configManager);
+            await this.activityTracker.start();
+        }
 
-        // Setup IPC handlers
-        this.setupIpcHandlers();
+        // Setup IPC handlers (only if not already set up)
+        if (!this.ipcHandlersSetup) {
+            this.setupIpcHandlers();
+            this.ipcHandlersSetup = true;
+        }
     }
 
     createTray() {
@@ -71,16 +85,43 @@ class WindowsActivityTracker {
         const contextMenu = Menu.buildFromTemplate([{
                 label: 'Show App',
                 click: () => {
-                    this.mainWindow.show();
-                    this.mainWindow.focus();
+                    if (this.mainWindow) {
+                        this.mainWindow.show();
+                        this.mainWindow.focus();
+                    } else {
+                        // Recreate window if it was destroyed
+                        this.createWindow();
+                    }
                 }
             },
             {
                 label: 'Settings',
                 click: () => {
-                    this.mainWindow.show();
-                    this.mainWindow.focus();
-                    this.mainWindow.webContents.send('navigate-to', 'settings');
+                    if (this.mainWindow) {
+                        this.mainWindow.show();
+                        this.mainWindow.focus();
+                        this.mainWindow.webContents.send('navigate-to', 'settings');
+                    } else {
+                        this.createWindow();
+                        setTimeout(() => {
+                            this.mainWindow.webContents.send('navigate-to', 'settings');
+                        }, 1000);
+                    }
+                }
+            },
+            { type: 'separator' },
+            {
+                label: this.activityTracker && this.activityTracker.isTracking ? 'Stop Tracking' : 'Start Tracking',
+                click: () => {
+                    if (this.activityTracker) {
+                        if (this.activityTracker.isTracking) {
+                            this.activityTracker.stop();
+                        } else {
+                            this.activityTracker.start();
+                        }
+                        // Update the menu
+                        this.createTray();
+                    }
                 }
             },
             { type: 'separator' },
@@ -88,6 +129,9 @@ class WindowsActivityTracker {
                 label: 'Quit',
                 click: () => {
                     this.isQuitting = true;
+                    if (this.activityTracker) {
+                        this.activityTracker.stop();
+                    }
                     app.quit();
                 }
             }
@@ -95,21 +139,40 @@ class WindowsActivityTracker {
 
         this.tray.setContextMenu(contextMenu);
         this.tray.on('double-click', () => {
-            this.mainWindow.show();
-            this.mainWindow.focus();
+            if (this.mainWindow) {
+                this.mainWindow.show();
+                this.mainWindow.focus();
+            } else {
+                // Recreate window if it was destroyed
+                this.createWindow();
+            }
         });
     }
 
     setupIpcHandlers() {
         // Get current status
         ipcMain.handle('get-status', async() => {
-            const config = this.configManager.getConfig();
-            console.log('Sending status with config:', config);
-            console.log('Username in config:', config.username);
-            return {
-                isTracking: this.activityTracker ? this.activityTracker.isTracking : false,
-                config: config
-            };
+            try {
+                const config = this.configManager.getConfig();
+                console.log('Sending status with config:', config);
+                console.log('Username in config:', config.username);
+                console.log('Config type:', typeof config);
+                console.log('Config keys:', Object.keys(config || {}));
+
+                const response = {
+                    isTracking: this.activityTracker ? this.activityTracker.isTracking : false,
+                    config: config
+                };
+
+                console.log('Sending response:', response);
+                return response;
+            } catch (error) {
+                console.error('Error in get-status handler:', error);
+                return {
+                    isTracking: false,
+                    config: { username: 'Unknown' }
+                };
+            }
         });
 
         // Update configuration
@@ -152,14 +215,14 @@ class WindowsActivityTracker {
 // App event handlers
 app.whenReady().then(async() => {
     const tracker = new WindowsActivityTracker();
+    global.tracker = tracker; // Store globally to prevent garbage collection
     await tracker.createWindow();
 });
 
 app.on('window-all-closed', () => {
-    // On macOS, keep app running even when all windows are closed
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    // Keep app running in background on all platforms
+    // The app will only quit when explicitly requested via tray menu
+    console.log('All windows closed, but keeping app running in background');
 });
 
 app.on('activate', () => {

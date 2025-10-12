@@ -9,7 +9,15 @@ class SimpleActivityTracker {
 
     async init() {
         this.setupEventListeners();
-        await this.checkSetupStatus();
+
+        // Wait for DOM to be fully ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', async() => {
+                await this.checkSetupStatus();
+            });
+        } else {
+            await this.checkSetupStatus();
+        }
     }
 
     setupEventListeners() {
@@ -56,7 +64,7 @@ class SimpleActivityTracker {
             const status = await ipcRenderer.invoke('get-status');
             const config = status.config;
 
-            console.log('Setup status check:', { config, username: config ? .username });
+            console.log('Setup status check:', { config, username: config && config.username });
 
             // Show main content if username is set and not 'Unknown'
             if (config && config.username && config.username !== 'Unknown') {
@@ -66,7 +74,7 @@ class SimpleActivityTracker {
                 this.setupComplete = true;
             } else {
                 console.log('Setup not complete, showing setup dialog');
-                console.log('Reason: config exists:', !!config, 'username exists:', !!config ? .username, 'username value:', config ? .username);
+                console.log('Reason: config exists:', !!config, 'username exists:', !!(config && config.username), 'username value:', config && config.username);
                 await this.showSetupDialogWithLaptopName();
             }
         } catch (error) {
@@ -132,17 +140,29 @@ class SimpleActivityTracker {
 
         // Update the current username display
         await this.loadUsername();
+
+        // Start polling to ensure username loads
+        this.startUsernamePolling();
     }
 
     async loadUsername(retryCount = 0) {
         const currentUsernameElement = document.getElementById('currentUsername');
-        if (!currentUsernameElement) return;
+        if (!currentUsernameElement) {
+            console.log('currentUsernameElement not found, retrying...');
+            if (retryCount < 3) {
+                setTimeout(() => {
+                    this.loadUsername(retryCount + 1);
+                }, 500);
+            }
+            return;
+        }
 
         try {
+            console.log(`Loading username (attempt ${retryCount + 1})...`);
             // Get the current username from config
             const status = await ipcRenderer.invoke('get-status');
             console.log('Received status:', status);
-            console.log('Username from config:', status.config ? .username);
+            console.log('Username from config:', status.config && status.config.username);
 
             if (status && status.config && status.config.username) {
                 currentUsernameElement.textContent = status.config.username;
@@ -170,6 +190,24 @@ class SimpleActivityTracker {
     // Method to refresh username display (useful when returning from setup)
     async refreshUsername() {
         await this.loadUsername();
+    }
+
+    // Periodic check for username if still loading
+    startUsernamePolling() {
+        const checkInterval = setInterval(() => {
+            const currentUsernameElement = document.getElementById('currentUsername');
+            if (currentUsernameElement && currentUsernameElement.textContent === 'Loading...') {
+                console.log('Username still loading, attempting to refresh...');
+                this.loadUsername();
+            } else {
+                clearInterval(checkInterval);
+            }
+        }, 2000); // Check every 2 seconds
+
+        // Stop polling after 30 seconds
+        setTimeout(() => {
+            clearInterval(checkInterval);
+        }, 30000);
     }
 
     async useLaptopName() {

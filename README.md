@@ -254,6 +254,32 @@ keylogger-chrome/
 4. Test thoroughly
 5. Submit a pull request
 
+## 🧪 Testing
+
+The project includes comprehensive tests located in the `tests/` directory:
+
+### Running Tests
+
+```bash
+# Run all tests
+cd tests
+node run-all-tests.js
+
+# Run individual tests
+node test-clipboard.js
+node test-background.js
+node test-screenshot-delete.js
+```
+
+### Test Categories
+
+- **Unit Tests**: Individual component testing
+- **Integration Tests**: Full workflow testing
+- **API Tests**: Server endpoint validation
+- **Platform Tests**: OS-specific functionality
+
+See `tests/README.md` for detailed test documentation.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

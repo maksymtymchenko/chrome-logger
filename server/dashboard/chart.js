@@ -75,8 +75,6 @@ document.addEventListener('DOMContentLoaded', async() => {
     loadScreens();
     setupEventListeners();
 
-    // Setup break pattern event listeners
-    setupBreakPatternListeners();
 
     // Initialize user management (only for ADMIN users)
     updateUserManagementVisibility();
@@ -84,7 +82,8 @@ document.addEventListener('DOMContentLoaded', async() => {
     // Auto-refresh every 15 seconds
     setInterval(() => {
         loadScreens();
-        updateStats(allEvents);
+        loadData(); // This will update stats from API
+        loadScreenshotCount(); // This will update screenshot count
     }, 15000);
 });
 
@@ -117,6 +116,12 @@ function setupEventListeners() {
     screenshotUserFilter.addEventListener('change', () => {
         loadScreens();
     });
+
+    // Add delete all screenshots button listener
+    const deleteAllScreenshotsBtn = document.getElementById('deleteAllScreenshotsBtn');
+    if (deleteAllScreenshotsBtn) {
+        deleteAllScreenshotsBtn.addEventListener('click', deleteAllScreenshots);
+    }
 
     // Logout button
     if (logoutBtn) {
@@ -173,13 +178,20 @@ async function loadData() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const payload = await res.json();
-        allEvents = payload.events;
 
-        // Update stats
-        updateStats(allEvents);
+        allEvents = payload.events || [];
 
-        // Update status indicators
-        updateStatusIndicators(allEvents);
+        // Update stats using API stats if available, otherwise calculate from events
+        if (payload.stats) {
+            updateStatsFromAPI(payload.stats);
+        } else {
+            updateStats(allEvents);
+            // Update status indicators only when not using API stats
+            updateStatusIndicators(allEvents);
+        }
+
+        // Load screenshot count
+        loadScreenshotCount();
 
         // Create domain activity chart
         createDomainChart(allEvents);
@@ -191,7 +203,6 @@ async function loadData() {
         updateFilterOptions();
         updateScreenshotUserFilterOptions();
         updateUserManagementFilter();
-        updateBreakPatternUserFilter();
 
         // Apply current filters
         applyFilters();
@@ -202,14 +213,78 @@ async function loadData() {
     }
 }
 
+function updateStatsFromAPI(stats) {
+    // Update status indicators (small numbers at top)
+    const totalEventsEl = document.getElementById('totalEvents');
+    const totalUsersEl = document.getElementById('totalUsers');
+    const totalDomainsEl = document.getElementById('totalDomains');
+
+    if (totalEventsEl) {
+        totalEventsEl.textContent = (stats.totalEvents || 0).toLocaleString();
+    }
+
+    if (totalUsersEl) {
+        totalUsersEl.textContent = (stats.uniqueUsers || 0).toLocaleString();
+    }
+
+    if (totalDomainsEl) {
+        totalDomainsEl.textContent = (stats.uniqueDomains || 0).toLocaleString();
+    }
+
+    // Update stat cards (large numbers in grid)
+    const statTotalEventsEl = document.getElementById('statTotalEvents');
+    const statTotalUsersEl = document.getElementById('statTotalUsers');
+    const statTotalDomainsEl = document.getElementById('statTotalDomains');
+
+    if (statTotalEventsEl) {
+        statTotalEventsEl.textContent = (stats.totalEvents || 0).toLocaleString();
+    }
+
+    if (statTotalUsersEl) {
+        statTotalUsersEl.textContent = (stats.uniqueUsers || 0).toLocaleString();
+    }
+
+    if (statTotalDomainsEl) {
+        statTotalDomainsEl.textContent = (stats.uniqueDomains || 0).toLocaleString();
+    }
+}
+
 function updateStats(inputData) {
     const data = Array.isArray(inputData) ? inputData : (Array.isArray(allEvents) ? allEvents : []);
     const uniqueUsers = new Set(data.map(e => e.username)).size;
     const uniqueDomains = new Set(data.map(e => e.domain)).size;
 
-    document.getElementById('totalEvents').textContent = data.length.toLocaleString();
-    document.getElementById('totalUsers').textContent = uniqueUsers.toLocaleString();
-    document.getElementById('totalDomains').textContent = uniqueDomains.toLocaleString();
+    // Update stat cards (large numbers in grid) - status indicators handled by updateStatsFromAPI
+    const statTotalEventsEl = document.getElementById('statTotalEvents');
+    const statTotalUsersEl = document.getElementById('statTotalUsers');
+    const statTotalDomainsEl = document.getElementById('statTotalDomains');
+
+    if (statTotalEventsEl) {
+        statTotalEventsEl.textContent = data.length.toLocaleString();
+    }
+
+    if (statTotalUsersEl) {
+        statTotalUsersEl.textContent = uniqueUsers.toLocaleString();
+    }
+
+    if (statTotalDomainsEl) {
+        statTotalDomainsEl.textContent = uniqueDomains.toLocaleString();
+    }
+}
+
+async function loadScreenshotCount() {
+    try {
+        const res = await fetch('/api/screenshots?limit=1');
+        if (res.ok) {
+            const payload = await res.json();
+            const totalScreenshotsEl = document.getElementById('statTotalScreenshots');
+            if (totalScreenshotsEl) {
+                totalScreenshotsEl.textContent = (payload.count || 0).toLocaleString();
+            }
+        }
+    } catch (error) {
+        console.error('Error loading screenshot count:', error);
+    }
 }
 
 function createDomainChart(data) {
@@ -473,7 +548,11 @@ function getActivityDescription(event) {
             break;
 
         case 'clipboard':
-            if (event.data.type) {
+            if (event.data.url) {
+                const url = event.data.url;
+                const domain = url.replace(/^https?:\/\//, '').split('/')[0];
+                return `Copied URL: ${domain}`;
+            } else if (event.data.type) {
                 return `Copied ${event.data.type}`;
             } else if (event.data.content) {
                 const preview = event.data.content.substring(0, 20);
@@ -544,7 +623,8 @@ function getApplicationInfo(event) {
     else if (event.type === 'screenshot') {
         appName = 'Screenshot Tool';
     } else if (event.type === 'clipboard') {
-        appName = 'Clipboard';
+        // For clipboard events, try to get the actual application from data
+        appName = (event.data && event.data.application) ? event.data.application : 'Clipboard';
     } else if (event.type === 'window_activity') {
         appName = 'Window Manager';
     }
@@ -615,6 +695,26 @@ function getActivityTypeInfo(event) {
     }
 }
 
+function getDisplayDomain(event) {
+    // For clipboard events with URLs, show the URL domain
+    if (event.type === 'clipboard' && event.data && event.data.url) {
+        const url = event.data.url;
+        const domain = url.replace(/^https?:\/\//, '').split('/')[0];
+        return {
+            text: domain,
+            url: url
+        };
+    }
+
+    // For other events, use the original domain
+    const domain = event.domain || 'unknown';
+    const protocol = domain.includes('://') ? '' : 'https://';
+    return {
+        text: domain,
+        url: `${protocol}${domain}`
+    };
+}
+
 function formatDuration(seconds) {
     // Handle very small durations with more detail
     if (seconds < 0.1) {
@@ -682,11 +782,13 @@ function renderTable() {
             console.log(`Event ${startIndex + index}: durationMs=${e.durationMs}, calculated duration=${duration}s, type=${e.type}`);
         }
 
+        const displayDomain = getDisplayDomain(e);
+
         tr.innerHTML = `
             <td class="time-cell">${t}</td>
             <td class="user-cell"><span class="user-badge">${e.username || 'Unknown'}</span></td>
             <td class="application-cell"><span class="application-badge">${application.icon} ${application.name}</span></td>
-            <td class="domain-cell"><a href="https://${e.domain}" target="_blank" class="domain-link">${e.domain}</a></td>
+            <td class="domain-cell"><a href="${displayDomain.url}" target="_blank" class="domain-link">${displayDomain.text}</a></td>
             <td class="activity-type-cell"><span class="activity-type-badge">${activityType.icon} ${activityType.text}</span></td>
             <td class="duration-cell"><span class="duration-badge">${formatDuration(duration)}</span></td>
             <td class="details-cell"><span class="reason-badge">${getActivityDescription(e)}</span></td>
@@ -771,7 +873,7 @@ async function loadScreens() {
         allScreenshots = payload.files;
         currentScreenshotPage = 1;
 
-        document.getElementById('totalScreenshots').textContent = payload.count.toLocaleString();
+        // Note: Screenshot count is handled by loadScreenshotCount() to show total across all users
         renderScreenshots();
         renderScreenshotPagination();
         
@@ -826,14 +928,27 @@ function renderScreenshots() {
             <span><i class="fas fa-clock"></i> ${time}</span>
         `;
 
+        // Add delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'screenshot-delete-btn';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.title = 'Delete screenshot';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent opening image
+            deleteScreenshot(f.filename);
+        });
+
         info.appendChild(filename);
         info.appendChild(meta);
         item.appendChild(img);
         item.appendChild(info);
+        item.appendChild(deleteBtn);
 
-        // Add click to open in new tab
-        item.addEventListener('click', () => {
+        // Add click to open in new tab (but not on delete button)
+        item.addEventListener('click', (e) => {
+            if (!e.target.closest('.screenshot-delete-btn')) {
             window.open(f.url, '_blank');
+            }
         });
 
         container.appendChild(item);
@@ -891,6 +1006,92 @@ function renderScreenshotPagination() {
         }
     });
     screenshotPagination.appendChild(nextBtn);
+}
+
+// Screenshot deletion functions
+async function deleteScreenshot(filename) {
+    if (!confirm(`Are you sure you want to delete this screenshot?\n\n${filename}\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/screenshots/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Screenshot deleted:', result);
+        
+        // Remove from local array
+        allScreenshots = allScreenshots.filter(s => s.filename !== filename);
+        
+        // Re-render screenshots
+        renderScreenshots();
+        renderScreenshotPagination();
+        
+        // Update screenshot count (reload total count from API)
+        loadScreenshotCount();
+        
+        // Show success message
+        showSuccessMessage(`Screenshot deleted successfully`);
+        
+    } catch (error) {
+        console.error('Error deleting screenshot:', error);
+        showErrorMessage(`Failed to delete screenshot: ${error.message}`);
+    }
+}
+
+async function deleteAllScreenshots() {
+    if (allScreenshots.length === 0) {
+        showErrorMessage('No screenshots to delete');
+        return;
+    }
+    
+    const count = allScreenshots.length;
+    if (!confirm(`Are you sure you want to delete ALL ${count} screenshots?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const filenames = allScreenshots.map(s => s.filename);
+        const response = await fetch('/api/screenshots', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filenames })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Screenshots deleted:', result);
+        
+        // Clear local array
+        allScreenshots = [];
+        
+        // Re-render screenshots
+        renderScreenshots();
+        renderScreenshotPagination();
+        
+        // Update screenshot count (reload total count from API)
+        loadScreenshotCount();
+        
+        // Show success message
+        showSuccessMessage(`Deleted ${result.deletedCount} screenshot(s) successfully`);
+        
+    } catch (error) {
+        console.error('Error deleting screenshots:', error);
+        showErrorMessage(`Failed to delete screenshots: ${error.message}`);
+    }
 }
 
 
@@ -1434,26 +1635,6 @@ function updateUserManagementFilter() {
     }
 }
 
-function updateBreakPatternUserFilter() {
-    const breakUserFilter = document.getElementById('breakUserFilter');
-    if (!breakUserFilter) return;
-    
-    const currentUser = breakUserFilter.value;
-    const users = [...new Set(allEvents.map(e => e.username))].sort();
-    
-    breakUserFilter.innerHTML = '<option value="">Select User</option>';
-    users.forEach(user => {
-        const option = document.createElement('option');
-        option.value = user;
-        option.textContent = user;
-        breakUserFilter.appendChild(option);
-    });
-    
-    // Restore selected user if it still exists
-    if (users.includes(currentUser)) {
-        breakUserFilter.value = currentUser;
-    }
-}
 
 async function handleUserManagementSelection() {
     const selectedUser = userManagementFilter.value;
@@ -1564,202 +1745,11 @@ async function handleDeleteUser() {
     }
 }
 
-// Break Pattern Analysis Functions
-function setupBreakPatternListeners() {
-    const loadBreakPatternsBtn = document.getElementById('loadBreakPatterns');
-    if (loadBreakPatternsBtn) {
-        loadBreakPatternsBtn.addEventListener('click', loadBreakPatterns);
-    }
-}
 
-async function loadBreakPatterns() {
-    const userFilter = document.getElementById('breakUserFilter');
-    const periodFilter = document.getElementById('breakPeriodFilter');
-    const content = document.getElementById('breakPatternsContent');
-    
-    if (!userFilter || !periodFilter || !content) return;
-    
-    const selectedUser = userFilter.value;
-    const selectedPeriod = periodFilter.value;
-    
-    if (!selectedUser) {
-        showErrorMessage('Please select a user to analyze break patterns');
-        return;
-    }
-    
-    try {
-        content.style.display = 'block';
-        
-        // Show loading state
-        const loadBtn = document.getElementById('loadBreakPatterns');
-        if (loadBtn) {
-            loadBtn.disabled = true;
-            loadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
-        }
-        
-        const response = await fetch(`/api/analytics/breaks/${selectedUser}?period=${selectedPeriod}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            displayBreakPatterns(data.analysis);
-        } else {
-            throw new Error(data.error || 'Failed to load break patterns');
-        }
-        
-    } catch (error) {
-        console.error('Error loading break patterns:', error);
-        showErrorMessage('Failed to load break patterns: ' + error.message);
-    } finally {
-        // Reset button state
-        const loadBtn = document.getElementById('loadBreakPatterns');
-        if (loadBtn) {
-            loadBtn.disabled = false;
-            loadBtn.innerHTML = '<i class="fas fa-chart-bar"></i> Analyze Breaks';
-        }
-    }
-}
 
-function displayBreakPatterns(analysis) {
-    // Update statistics
-    document.getElementById('totalBreaks').textContent = analysis.totalBreaks;
-    document.getElementById('avgBreakLength').textContent = analysis.averageBreakLength + ' min';
-    document.getElementById('breakFrequency').textContent = analysis.breakFrequency + '/day';
-    document.getElementById('totalBreakTime').textContent = analysis.totalBreakTime + ' min';
-    
-    // Create break patterns chart
-    createBreakPatternsChart(analysis.hourlyBreakDistribution);
-    
-    // Display recommendations
-    displayBreakRecommendations(analysis.breakRecommendations);
-    
-    // Display recent breaks
-    displayRecentBreaks(analysis.dailyBreaks);
-}
 
-function createBreakPatternsChart(hourlyDistribution) {
-    const canvas = document.getElementById('breakPatternsChart');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // Clear previous chart
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Prepare data for 24 hours
-    const hours = Array.from({length: 24}, (_, i) => i);
-    const breakCounts = hours.map(hour => hourlyDistribution[hour] || 0);
-    
-    // Chart dimensions
-    const padding = 40;
-    const chartWidth = canvas.width - 2 * padding;
-    const chartHeight = canvas.height - 2 * padding;
-    const barWidth = chartWidth / 24;
-    
-    // Find max value for scaling
-    const maxBreaks = Math.max(...breakCounts, 1);
-    
-    // Draw bars
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-color') || '#3b82f6';
-    
-    breakCounts.forEach((count, index) => {
-        const barHeight = (count / maxBreaks) * chartHeight;
-        const x = padding + index * barWidth;
-        const y = padding + chartHeight - barHeight;
-        
-        ctx.fillRect(x, y, barWidth - 2, barHeight);
-    });
-    
-    // Draw axes
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary') || '#6b7280';
-    ctx.lineWidth = 1;
-    
-    // X-axis
-    ctx.beginPath();
-    ctx.moveTo(padding, padding + chartHeight);
-    ctx.lineTo(padding + chartWidth, padding + chartHeight);
-    ctx.stroke();
-    
-    // Y-axis
-    ctx.beginPath();
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, padding + chartHeight);
-    ctx.stroke();
-    
-    // Draw hour labels
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary') || '#6b7280';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    
-    for (let i = 0; i < 24; i += 4) {
-        const x = padding + i * barWidth + barWidth / 2;
-        ctx.fillText(i + ':00', x, padding + chartHeight + 20);
-    }
-    
-    // Draw value labels
-    ctx.textAlign = 'right';
-    ctx.fillText('0', padding - 5, padding + chartHeight);
-    ctx.fillText(maxBreaks.toString(), padding - 5, padding + 5);
-}
 
-function displayBreakRecommendations(recommendations) {
-    const container = document.getElementById('breakRecommendationsList');
-    if (!container) return;
-    
-    if (recommendations.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No specific recommendations at this time. Your break patterns look good!</p>';
-        return;
-    }
-    
-    const list = document.createElement('ul');
-    recommendations.forEach(rec => {
-        const li = document.createElement('li');
-        li.textContent = rec;
-        list.appendChild(li);
-    });
-    
-    container.innerHTML = '';
-    container.appendChild(list);
-}
 
-function displayRecentBreaks(dailyBreaks) {
-    const container = document.getElementById('recentBreaksList');
-    if (!container) return;
-    
-    if (dailyBreaks.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No breaks recorded in the selected period.</p>';
-        return;
-    }
-    
-    // Sort by start time (most recent first)
-    const sortedBreaks = dailyBreaks.sort((a, b) => new Date(b.start) - new Date(a.start));
-    
-    // Show only last 10 breaks
-    const recentBreaks = sortedBreaks.slice(0, 10);
-    
-    const breaksList = document.createElement('div');
-    recentBreaks.forEach(break_ => {
-        const breakItem = document.createElement('div');
-        breakItem.className = 'break-item';
-        
-        const startTime = new Date(break_.start).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-        const endTime = new Date(break_.end).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-        
-        breakItem.innerHTML = `
-            <div class="break-time">${startTime} - ${endTime}</div>
-            <div class="break-duration">${break_.duration} min</div>
-        `;
-        
-        breaksList.appendChild(breakItem);
-    });
-    
-    container.innerHTML = '';
-    container.appendChild(breaksList);
-}
 
 // Modal functionality
 function showEventDetails(eventIndex) {
@@ -1908,6 +1898,7 @@ function exportCSV() {
 }
 
 function updateStatusIndicators(events) {
+    // Update status indicators (small numbers at top) - only when not using API stats
     const totalUsers = document.getElementById('totalUsers');
     const totalEvents = document.getElementById('totalEvents');
     const totalDomains = document.getElementById('totalDomains');
@@ -1924,6 +1915,25 @@ function updateStatusIndicators(events) {
     if (totalDomains) {
         const uniqueDomains = new Set(events.map(e => e.domain)).size;
         totalDomains.textContent = uniqueDomains;
+    }
+    
+    // Update stat cards (large numbers in grid)
+    const statTotalUsers = document.getElementById('statTotalUsers');
+    const statTotalEvents = document.getElementById('statTotalEvents');
+    const statTotalDomains = document.getElementById('statTotalDomains');
+    
+    if (statTotalUsers) {
+        const uniqueUsers = new Set(events.map(e => e.username)).size;
+        statTotalUsers.textContent = uniqueUsers;
+    }
+    
+    if (statTotalEvents) {
+        statTotalEvents.textContent = events.length;
+    }
+    
+    if (statTotalDomains) {
+        const uniqueDomains = new Set(events.map(e => e.domain)).size;
+        statTotalDomains.textContent = uniqueDomains;
     }
 }
 

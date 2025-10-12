@@ -13,6 +13,7 @@ class ActivityTracker {
         this.isTracking = false;
         this.trackingInterval = null;
         this.screenshotInterval = null;
+        this.clipboardInterval = null;
         this.lastActivity = null;
         this.lastScreenshot = null;
         this.activityBuffer = [];
@@ -109,6 +110,11 @@ class ActivityTracker {
             this.screenshotInterval = null;
         }
 
+        if (this.clipboardInterval) {
+            clearInterval(this.clipboardInterval);
+            this.clipboardInterval = null;
+        }
+
         // Send remaining data
         await this.flushBuffers();
 
@@ -137,9 +143,13 @@ class ActivityTracker {
     }
 
     startClipboardTracking() {
-        if (!this.configManager.get('trackClipboard')) return;
+        if (!this.configManager.get('trackClipboard')) {
+            console.log('Clipboard tracking disabled in config');
+            return;
+        }
 
-        setInterval(async() => {
+        console.log('Starting clipboard tracking...');
+        this.clipboardInterval = setInterval(async() => {
             if (!this.isTracking) return;
 
             try {
@@ -353,8 +363,11 @@ class ActivityTracker {
     async trackClipboard() {
         try {
             const currentClipboard = await clipboardy.read();
+            console.log('Clipboard check - current length:', currentClipboard ? currentClipboard.length : 0);
+            console.log('Last clipboard length:', this.lastClipboard ? this.lastClipboard.length : 0);
 
             if (currentClipboard && currentClipboard !== this.lastClipboard) {
+                console.log('New clipboard content detected!');
                 const config = this.configManager.getConfig();
                 const username = config.username || 'Unknown';
 
@@ -363,23 +376,32 @@ class ActivityTracker {
                     deviceId: this.getDeviceId(),
                     domain: 'windows-desktop',
                     timestamp: Date.now(),
+                    durationMs: 1000, // Clipboard events are instant, but give them 1 second duration
+                    reason: 'clipboard_copy',
                     type: 'clipboard',
                     data: {
                         content: currentClipboard.substring(0, 1000), // Limit content length
                         length: currentClipboard.length,
-                        type: this.detectClipboardType(currentClipboard)
+                        type: this.detectClipboardType(currentClipboard),
+                        application: this.currentWindow ? this.currentWindow.owner.name : 'Unknown',
+                        windowTitle: this.currentWindow ? this.currentWindow.title : 'Unknown',
+                        url: this.detectUrlFromClipboard(currentClipboard)
                     }
                 };
 
+                console.log('Created clipboard activity:', clipboardActivity);
                 this.activityBuffer.push(clipboardActivity);
                 this.lastClipboard = currentClipboard;
 
                 // Send clipboard data immediately
+                console.log('Sending clipboard data to server...');
                 await this.sendActivityData();
+                console.log('Clipboard data sent successfully');
             }
         } catch (error) {
             // Clipboard access might fail on some systems
-            console.log('Clipboard access not available:', error.message);
+            console.error('Clipboard access error:', error.message);
+            console.error('Full error:', error);
         }
     }
 
@@ -395,6 +417,13 @@ class ActivityTracker {
         } else {
             return 'text';
         }
+    }
+
+    detectUrlFromClipboard(content) {
+        // Extract URL from clipboard content if it contains one
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const matches = content.match(urlRegex);
+        return matches ? matches[0] : null;
     }
 
     async takeScreenshot(reason = 'event') {
@@ -432,8 +461,8 @@ class ActivityTracker {
                 data: {
                     filename: filename,
                     reason: reason,
-                    application: this.currentWindow ? .owner ? .name || 'Unknown',
-                    title: this.currentWindow ? .title || 'Screenshot'
+                    application: this.currentWindow.owner.name || 'Unknown',
+                    title: this.currentWindow.title || 'Screenshot'
                 }
             };
 
