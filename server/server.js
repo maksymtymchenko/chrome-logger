@@ -772,7 +772,6 @@ app.get('/api/analytics/users', async(req, res) => {
     }
 });
 
-// Productivity Insights endpoints
 // Admin endpoint to delete user data
 app.delete('/api/admin/delete-user/:username', requireRole(['ADMIN']), async(req, res) => {
     try {
@@ -821,282 +820,7 @@ app.delete('/api/admin/delete-user/:username', requireRole(['ADMIN']), async(req
 });
 
 
-app.get('/api/analytics/productivity/:username', async(req, res) => {
-    try {
-        const { username } = req.params;
-        const { period = 'week', startDate, endDate } = req.query;
 
-        let dateFilter = {};
-        const now = new Date();
-
-        if (startDate && endDate) {
-            dateFilter = {
-                timestamp: {
-                    $gte: new Date(startDate),
-                    $lte: new Date(endDate)
-                }
-            };
-        } else {
-            // Default period filtering
-            switch (period) {
-                case 'day':
-                    const startOfDay = new Date(now);
-                    startOfDay.setHours(0, 0, 0, 0);
-                    dateFilter = { timestamp: { $gte: startOfDay } };
-                    break;
-                case 'week':
-                    const startOfWeek = new Date(now);
-                    startOfWeek.setDate(now.getDate() - 7);
-                    dateFilter = { timestamp: { $gte: startOfWeek } };
-                    break;
-                case 'month':
-                    const startOfMonth = new Date(now);
-                    startOfMonth.setDate(now.getDate() - 30);
-                    dateFilter = { timestamp: { $gte: startOfMonth } };
-                    break;
-            }
-        }
-
-        if (useMongo) {
-            const userFilter = { username, ...dateFilter };
-
-            // Get all events for the user in the specified period
-            const events = await EventModel.find(userFilter).sort({ timestamp: 1 }).lean();
-
-            // Calculate productivity insights
-            const insights = calculateProductivityInsights(events);
-
-            res.json(insights);
-        } else {
-            const all = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-            const userEvents = all.filter(event => {
-                if (event.username !== username) return false;
-                const eventDate = new Date(event.timestamp);
-                if (startDate && eventDate < new Date(startDate)) return false;
-                if (endDate && eventDate > new Date(endDate)) return false;
-                if (!startDate && !endDate) {
-                    const now = new Date();
-                    switch (period) {
-                        case 'day':
-                            const startOfDay = new Date(now);
-                            startOfDay.setHours(0, 0, 0, 0);
-                            if (eventDate < startOfDay) return false;
-                            break;
-                        case 'week':
-                            const startOfWeek = new Date(now);
-                            startOfWeek.setDate(now.getDate() - 7);
-                            if (eventDate < startOfWeek) return false;
-                            break;
-                        case 'month':
-                            const startOfMonth = new Date(now);
-                            startOfMonth.setDate(now.getDate() - 30);
-                            if (eventDate < startOfMonth) return false;
-                            break;
-                    }
-                }
-                return true;
-            });
-
-            const insights = calculateProductivityInsights(userEvents);
-            res.json(insights);
-        }
-    } catch (error) {
-        console.error('Error getting productivity insights:', error);
-        res.status(500).json({ error: 'Failed to get productivity insights' });
-    }
-});
-
-// Helper function to calculate productivity insights
-
-function calculateProductivityInsights(events) {
-    if (!events || events.length === 0) {
-        return {
-            focusTime: 0,
-            totalTime: 0,
-            productivityScore: 0,
-            distractionCount: 0,
-            averageSessionLength: 0,
-            workDomains: [],
-            personalDomains: [],
-            focusPatterns: [],
-            recommendations: []
-        };
-    }
-
-    // Define work and personal domain patterns
-    const workPatterns = [
-        /github\.com/i, /stackoverflow\.com/i, /dev\.to/i, /medium\.com/i,
-        /docs\./i, /api\./i, /admin\./i, /dashboard\./i, /app\./i,
-        /slack\.com/i, /teams\.microsoft\.com/i, /zoom\.us/i,
-        /google\.com\/docs/i, /google\.com\/sheets/i, /google\.com\/slides/i,
-        /notion\.so/i, /trello\.com/i, /asana\.com/i, /jira\./i,
-        /localhost/i, /127\.0\.0\.1/i, /ngrok\./i
-    ];
-
-    const personalPatterns = [
-        /facebook\.com/i, /instagram\.com/i, /twitter\.com/i, /tiktok\.com/i,
-        /youtube\.com/i, /netflix\.com/i, /reddit\.com/i, /pinterest\.com/i,
-        /amazon\.com/i, /ebay\.com/i, /shopping/i, /news\./i,
-        /gmail\.com/i, /outlook\.com/i, /yahoo\.com/i
-    ];
-
-    // Categorize domains
-    const workDomains = new Set();
-    const personalDomains = new Set();
-    const neutralDomains = new Set();
-
-    events.forEach(event => {
-        const domain = event.domain.toLowerCase();
-        let categorized = false;
-
-        for (const pattern of workPatterns) {
-            if (pattern.test(domain)) {
-                workDomains.add(domain);
-                categorized = true;
-                break;
-            }
-        }
-
-        if (!categorized) {
-            for (const pattern of personalPatterns) {
-                if (pattern.test(domain)) {
-                    personalDomains.add(domain);
-                    categorized = true;
-                    break;
-                }
-            }
-        }
-
-        if (!categorized) {
-            neutralDomains.add(domain);
-        }
-    });
-
-    // Calculate time spent in each category
-    let workTime = 0;
-    let personalTime = 0;
-    let neutralTime = 0;
-
-    events.forEach(event => {
-        const domain = event.domain.toLowerCase();
-        const duration = event.durationMs || 0;
-
-        if (workDomains.has(domain)) {
-            workTime += duration;
-        } else if (personalDomains.has(domain)) {
-            personalTime += duration;
-        } else {
-            neutralTime += duration;
-        }
-    });
-
-    const totalTime = workTime + personalTime + neutralTime;
-    const focusTime = workTime; // Focus time is time spent on work domains
-
-    // Calculate productivity score (0-100)
-    let productivityScore = 0;
-    if (totalTime > 0) {
-        const workRatio = workTime / totalTime;
-        const personalRatio = personalTime / totalTime;
-
-        // Base score from work ratio
-        productivityScore = workRatio * 70;
-
-        // Bonus for high work ratio
-        if (workRatio > 0.8) productivityScore += 20;
-        else if (workRatio > 0.6) productivityScore += 10;
-
-        // Penalty for high personal ratio
-        if (personalRatio > 0.3) productivityScore -= 20;
-        else if (personalRatio > 0.2) productivityScore -= 10;
-
-        // Ensure score is between 0 and 100
-        productivityScore = Math.max(0, Math.min(100, productivityScore));
-    }
-
-    // Calculate distraction count (switches to personal domains)
-    let distractionCount = 0;
-    let currentCategory = null;
-
-    events.forEach(event => {
-        const domain = event.domain.toLowerCase();
-        let category = 'neutral';
-
-        if (workDomains.has(domain)) category = 'work';
-        else if (personalDomains.has(domain)) category = 'personal';
-
-        if (currentCategory === 'work' && category === 'personal') {
-            distractionCount++;
-        }
-        currentCategory = category;
-    });
-
-    // Calculate average session length
-    const averageSessionLength = events.length > 0 ? totalTime / events.length : 0;
-
-    // Generate focus patterns (hourly breakdown)
-    const hourlyFocus = {};
-    events.forEach(event => {
-        const hour = new Date(event.timestamp).getHours();
-        if (!hourlyFocus[hour]) hourlyFocus[hour] = { work: 0, personal: 0, total: 0 };
-
-        const domain = event.domain.toLowerCase();
-        const duration = event.durationMs || 0;
-
-        hourlyFocus[hour].total += duration;
-        if (workDomains.has(domain)) {
-            hourlyFocus[hour].work += duration;
-        } else if (personalDomains.has(domain)) {
-            hourlyFocus[hour].personal += duration;
-        }
-    });
-
-    const focusPatterns = Object.keys(hourlyFocus).map(hour => ({
-        hour: parseInt(hour),
-        workTime: Math.round(hourlyFocus[hour].work / 60000),
-        personalTime: Math.round(hourlyFocus[hour].personal / 60000),
-        totalTime: Math.round(hourlyFocus[hour].total / 60000),
-        focusRatio: hourlyFocus[hour].total > 0 ? hourlyFocus[hour].work / hourlyFocus[hour].total : 0
-    })).sort((a, b) => a.hour - b.hour);
-
-    // Generate recommendations
-    const recommendations = [];
-
-    if (productivityScore < 50) {
-        recommendations.push("Consider reducing time spent on personal websites during work hours");
-    }
-
-    if (distractionCount > 10) {
-        recommendations.push("High number of distractions detected. Try using focus mode or website blockers");
-    }
-
-    if (workTime < 4 * 60 * 60 * 1000) { // Less than 4 hours
-        recommendations.push("Consider increasing focus time for better productivity");
-    }
-
-    const peakFocusHour = focusPatterns.reduce((max, pattern) =>
-        pattern.focusRatio > max.focusRatio ? pattern : max, { hour: 0, focusRatio: 0 }
-    );
-
-    if (peakFocusHour.focusRatio > 0.8) {
-        recommendations.push(`Your most productive hour is ${peakFocusHour.hour}:00. Schedule important tasks during this time`);
-    }
-
-    return {
-        focusTime: Math.round(focusTime / 60000), // Convert to minutes
-        totalTime: Math.round(totalTime / 60000), // Convert to minutes
-        productivityScore: Math.round(productivityScore),
-        distractionCount,
-        averageSessionLength: Math.round(averageSessionLength / 60000), // Convert to minutes
-        workDomains: Array.from(workDomains),
-        personalDomains: Array.from(personalDomains),
-        neutralDomains: Array.from(neutralDomains),
-        focusPatterns,
-        recommendations,
-        workTimeRatio: totalTime > 0 ? Math.round((workTime / totalTime) * 100) : 0,
-        personalTimeRatio: totalTime > 0 ? Math.round((personalTime / totalTime) * 100) : 0
-    };
-}
 
 // Department Management API endpoints
 // Get all departments
@@ -1177,6 +901,22 @@ app.post('/api/user-departments', requireRole(['ADMIN']), async(req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Error assigning user to department:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Remove user from department
+app.delete('/api/user-departments', requireRole(['ADMIN']), async(req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username) {
+            return res.status(400).json({ error: 'Username is required' });
+        }
+
+        const result = departmentManager.removeUserFromDepartment(username);
+        res.json(result);
+    } catch (error) {
+        console.error('Error removing user from department:', error);
         res.status(500).json({ error: error.message });
     }
 });

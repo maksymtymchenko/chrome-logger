@@ -19,9 +19,6 @@ let allScreenshots = [];
 let currentScreenshotPage = 1;
 const screenshotsPerPage = 12;
 
-// Productivity insights state
-let productivityInsights = null;
-let focusPatternsChart = null;
 
 // DOM elements
 const searchInput = document.getElementById('searchInput');
@@ -45,19 +42,6 @@ const userManagementFilter = document.getElementById('userManagementFilter');
 const deleteUserBtn = document.getElementById('deleteUserBtn');
 const userManagementInfo = document.getElementById('userManagementInfo');
 
-// Productivity insights DOM elements
-const productivityUserFilter = document.getElementById('productivityUserFilter');
-const productivityPeriodFilter = document.getElementById('productivityPeriodFilter');
-const refreshProductivityBtn = document.getElementById('refreshProductivityBtn');
-const productivityContent = document.getElementById('productivityContent');
-const productivityEmpty = document.getElementById('productivityEmpty');
-const productivityScore = document.getElementById('productivityScore');
-const focusTime = document.getElementById('focusTime');
-const distractionCount = document.getElementById('distractionCount');
-const workTimeRatio = document.getElementById('workTimeRatio');
-const workDomainsList = document.getElementById('workDomainsList');
-const personalDomainsList = document.getElementById('personalDomainsList');
-const recommendationsList = document.getElementById('recommendationsList');
 
 // Dark mode elements
 const darkModeToggle = document.getElementById('darkModeToggle');
@@ -139,16 +123,6 @@ function setupEventListeners() {
         logoutBtn.addEventListener('click', handleLogout);
     }
 
-    // Productivity insights event listeners
-    if (productivityUserFilter) {
-        productivityUserFilter.addEventListener('change', loadProductivityInsights);
-    }
-    if (productivityPeriodFilter) {
-        productivityPeriodFilter.addEventListener('change', loadProductivityInsights);
-    }
-    if (refreshProductivityBtn) {
-        refreshProductivityBtn.addEventListener('click', loadProductivityInsights);
-    }
 
     // Dark mode toggle
     if (darkModeToggle) {
@@ -210,8 +184,6 @@ async function loadData() {
         // Create domain activity chart
         createDomainChart(allEvents);
 
-        // Update productivity user filter
-        updateProductivityUserFilter();
 
         // Update filters
         updateFilterOptions();
@@ -450,6 +422,9 @@ function updateFilterOptions() {
     if (domains.includes(currentDomain)) {
         domainFilter.value = currentDomain;
     }
+
+    // Update department filter
+    updateDepartmentFilter();
 }
 
 function updateScreenshotUserFilterOptions() {
@@ -754,7 +729,7 @@ function renderTable() {
     tbody.innerHTML = '';
 
     if (filteredEvents.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-search"></i><br>No events found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-search"></i><br>No events found</td></tr>';
         return;
     }
 
@@ -799,10 +774,12 @@ function renderTable() {
         }
 
         const displayDomain = getDisplayDomain(e);
+        const departmentInfo = getDepartmentInfo(e.username);
 
         tr.innerHTML = `
             <td class="time-cell">${t}</td>
             <td class="user-cell"><span class="user-badge">${e.username || 'Unknown'}</span></td>
+            <td class="department-cell"><span class="department-badge" style="background-color: ${departmentInfo.color}; color: white;">${departmentInfo.name}</span></td>
             <td class="application-cell"><span class="application-badge">${application.icon} ${application.name}</span></td>
             <td class="domain-cell"><a href="${displayDomain.url}" target="_blank" class="domain-link">${displayDomain.text}</a></td>
             <td class="activity-type-cell"><span class="activity-type-badge">${activityType.icon} ${activityType.text}</span></td>
@@ -1307,239 +1284,7 @@ async function handleLogout() {
     }
 }
 
-// Productivity Insights Functions
-async function loadProductivityInsights() {
-    const username = productivityUserFilter?.value;
-    const period = productivityPeriodFilter?.value || 'week';
-    
-    if (!username) {
-        if (productivityContent) productivityContent.style.display = 'none';
-        if (productivityEmpty) productivityEmpty.style.display = 'block';
-        return;
-    }
 
-    try {
-        showLoading('Loading productivity insights...');
-        
-        const response = await fetch(`/api/analytics/productivity/${encodeURIComponent(username)}?period=${period}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const insights = await response.json();
-        productivityInsights = insights;
-        
-        updateProductivityUI(insights);
-        
-        if (productivityContent) productivityContent.style.display = 'block';
-        if (productivityEmpty) productivityEmpty.style.display = 'none';
-        
-    } catch (error) {
-        console.error('Error loading productivity insights:', error);
-        showError('Failed to load productivity insights');
-    }
-}
-
-function updateProductivityUI(insights) {
-    // Update productivity score
-    if (productivityScore) {
-        productivityScore.textContent = insights.productivityScore || 0;
-        productivityScore.style.color = getScoreColor(insights.productivityScore);
-    }
-    
-    // Update focus time
-    if (focusTime) {
-        focusTime.textContent = formatTime(insights.focusTime || 0);
-    }
-    
-    // Update distraction count
-    if (distractionCount) {
-        distractionCount.textContent = insights.distractionCount || 0;
-    }
-    
-    // Update work time ratio
-    if (workTimeRatio) {
-        workTimeRatio.textContent = `${insights.workTimeRatio || 0}%`;
-    }
-    
-    // Update domain lists
-    updateDomainList(workDomainsList, insights.workDomains || [], 'work');
-    updateDomainList(personalDomainsList, insights.personalDomains || [], 'personal');
-    
-    // Update recommendations
-    updateRecommendations(insights.recommendations || []);
-    
-    // Update focus patterns chart
-    updateFocusPatternsChart(insights.focusPatterns || []);
-}
-
-function getScoreColor(score) {
-    if (score >= 80) return '#10b981'; // Green
-    if (score >= 60) return '#f59e0b'; // Yellow
-    return '#ef4444'; // Red
-}
-
-function formatTime(minutes) {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-}
-
-function updateDomainList(container, domains, type) {
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (domains.length === 0) {
-        container.innerHTML = '<div style="color: #6b7280; font-style: italic;">No domains found</div>';
-        return;
-    }
-    
-    domains.forEach(domain => {
-        const domainElement = document.createElement('div');
-        domainElement.style.cssText = `
-            padding: 4px 8px;
-            margin: 2px 0;
-            background: ${type === 'work' ? '#dbeafe' : '#fee2e2'};
-            border-radius: 4px;
-            font-size: 12px;
-            color: ${type === 'work' ? '#1e40af' : '#dc2626'};
-            word-break: break-all;
-        `;
-        domainElement.textContent = domain;
-        container.appendChild(domainElement);
-    });
-}
-
-function updateRecommendations(recommendations) {
-    if (!recommendationsList) return;
-    
-    recommendationsList.innerHTML = '';
-    
-    if (recommendations.length === 0) {
-        recommendationsList.innerHTML = '<div style="color: #6b7280; font-style: italic;">No recommendations available</div>';
-        return;
-    }
-    
-    recommendations.forEach(rec => {
-        const recElement = document.createElement('div');
-        recElement.style.cssText = `
-            padding: 8px 12px;
-            margin: 4px 0;
-            background: #f1f5f9;
-            border-left: 3px solid #3b82f6;
-            border-radius: 4px;
-            font-size: 14px;
-            color: #1e293b;
-        `;
-        recElement.innerHTML = `<i class="fas fa-lightbulb" style="margin-right: 8px; color: #f59e0b;"></i>${rec}`;
-        recommendationsList.appendChild(recElement);
-    });
-}
-
-function updateFocusPatternsChart(patterns) {
-    if (!patterns || patterns.length === 0) return;
-    
-    const ctx = document.getElementById('focusPatternsChart');
-    if (!ctx) return;
-    
-    // Destroy existing chart
-    if (focusPatternsChart) {
-        focusPatternsChart.destroy();
-    }
-    
-    const hours = patterns.map(p => `${p.hour}:00`);
-    const workData = patterns.map(p => p.workTime);
-    const personalData = patterns.map(p => p.personalTime);
-    
-    focusPatternsChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: hours,
-            datasets: [
-                {
-                    label: 'Work Time (min)',
-                    data: workData,
-                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Personal Time (min)',
-                    data: personalData,
-                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                    borderColor: 'rgba(239, 68, 68, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Time (minutes)',
-                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#cbd5e1' : '#6b7280'
-                    },
-                    ticks: {
-                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#cbd5e1' : '#6b7280'
-                    },
-                    grid: {
-                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Hour of Day',
-                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#cbd5e1' : '#6b7280'
-                    },
-                    ticks: {
-                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#cbd5e1' : '#6b7280'
-                    },
-                    grid: {
-                        display: false
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#cbd5e1' : '#6b7280'
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
-                }
-            }
-        }
-    });
-}
-
-// Update productivity user filter when users are loaded
-function updateProductivityUserFilter() {
-    if (!productivityUserFilter) return;
-    
-    const currentUser = productivityUserFilter.value;
-    const users = [...new Set(allEvents.map(e => e.username))].sort();
-    
-    productivityUserFilter.innerHTML = '<option value="">Select User</option>';
-    users.forEach(user => {
-        const option = document.createElement('option');
-        option.value = user;
-        option.textContent = user;
-        productivityUserFilter.appendChild(option);
-    });
-    
-    if (users.includes(currentUser)) {
-        productivityUserFilter.value = currentUser;
-    }
-}
 
 // Dark Mode Functions
 function initializeDarkMode() {
@@ -1600,20 +1345,6 @@ function updateChartColors(theme) {
         usersChart.update();
     }
     
-    if (focusPatternsChart && focusPatternsChart.options) {
-        if (theme === 'dark') {
-            focusPatternsChart.options.scales.x.ticks.color = '#cbd5e1';
-            focusPatternsChart.options.scales.y.ticks.color = '#cbd5e1';
-            focusPatternsChart.options.scales.x.title.color = '#cbd5e1';
-            focusPatternsChart.options.scales.y.title.color = '#cbd5e1';
-        } else {
-            focusPatternsChart.options.scales.x.ticks.color = '#6b7280';
-            focusPatternsChart.options.scales.y.ticks.color = '#6b7280';
-            focusPatternsChart.options.scales.x.title.color = '#6b7280';
-            focusPatternsChart.options.scales.y.title.color = '#6b7280';
-        }
-        focusPatternsChart.update();
-    }
 }
 
 // User Management Functions
@@ -1703,7 +1434,6 @@ async function handleDeleteUser() {
         'This will permanently delete:\n' +
         '• All activity logs\n' +
         '• All screenshots\n' +
-        '• All productivity data\n\n' +
         'This action cannot be undone!'
     );
     
@@ -1734,7 +1464,6 @@ async function handleDeleteUser() {
         // Clear any active filters that might be showing deleted user data
         if (userFilter) userFilter.value = '';
         if (screenshotUserFilter) screenshotUserFilter.value = '';
-        if (productivityUserFilter) productivityUserFilter.value = '';
         
         // Refresh all data from server
         await loadData();
@@ -1744,7 +1473,6 @@ async function handleDeleteUser() {
         updateUserManagementFilter();
         updateFilterOptions();
         updateScreenshotUserFilterOptions();
-        updateProductivityUserFilter();
         
         // Clean up any failed screenshots
         allScreenshots = allScreenshots.filter(s => !s.failed);
@@ -2031,27 +1759,95 @@ function getDepartmentColor(departmentId) {
     return dept ? dept.color : '#9CA3AF';
 }
 
+function getDepartmentInfo(username) {
+    const departmentId = getDepartmentForUser(username);
+    const dept = departments.find(d => d.id === departmentId);
+    
+    if (dept) {
+        return {
+            id: dept.id,
+            name: dept.name,
+            color: dept.color
+        };
+    }
+    
+    return {
+        id: 'other',
+        name: 'Other',
+        color: '#9CA3AF'
+    };
+}
+
 function showDepartmentManagement() {
     // Create department management modal
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content large-modal">
             <div class="modal-header">
-                <h3>Manage Departments</h3>
+                <h3>Manage Departments & Users</h3>
                 <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="departments-list" id="departmentsList"></div>
-                <div class="add-department">
-                    <h4>Add New Department</h4>
-                    <form id="addDepartmentForm">
-                        <input type="text" id="deptId" placeholder="Department ID" required>
-                        <input type="text" id="deptName" placeholder="Department Name" required>
-                        <input type="color" id="deptColor" value="#3B82F6">
-                        <textarea id="deptDescription" placeholder="Description"></textarea>
-                        <button type="submit" class="btn btn-primary">Add Department</button>
-                    </form>
+                <div class="management-tabs">
+                    <button class="tab-btn active" onclick="switchTab('departments')">Departments</button>
+                    <button class="tab-btn" onclick="switchTab('users')">User Assignment</button>
+                </div>
+                
+                <div id="departmentsTab" class="tab-content active">
+                    <div class="departments-list" id="departmentsList"></div>
+                    <div class="add-department">
+                        <h4>Add New Department</h4>
+                        <form id="addDepartmentForm">
+                            <div class="form-group">
+                                <label for="deptId">Department ID</label>
+                                <input type="text" id="deptId" placeholder="e.g., it, hr, finance" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="deptName">Department Name</label>
+                                <input type="text" id="deptName" placeholder="e.g., Information Technology" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="deptColor">Color</label>
+                                <input type="color" id="deptColor" value="#3B82F6">
+                            </div>
+                            <div class="form-group">
+                                <label for="deptDescription">Description</label>
+                                <textarea id="deptDescription" placeholder="Optional description of the department"></textarea>
+                            </div>
+                            <div class="actions">
+                                <button type="submit" class="btn btn-primary">Add Department</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div id="usersTab" class="tab-content">
+                    <div class="user-assignment">
+                        <div class="assignment-section">
+                            <h4>Assign User to Department</h4>
+                            <form id="assignUserForm">
+                                <div class="form-group">
+                                    <label for="userSelect">Select User:</label>
+                                    <select id="userSelect" required>
+                                        <option value="">Choose a user...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="deptSelect">Select Department:</label>
+                                    <select id="deptSelect" required>
+                                        <option value="">Choose a department...</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Assign User</button>
+                            </form>
+                        </div>
+                        
+                        <div class="current-assignments">
+                            <h4>Current User Assignments</h4>
+                            <div id="userAssignmentsList"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2060,6 +1856,8 @@ function showDepartmentManagement() {
     document.body.appendChild(modal);
     loadDepartmentsList();
     setupDepartmentForm();
+    setupUserAssignment();
+    loadUserAssignments();
 }
 
 async function loadDepartmentsList() {
@@ -2092,6 +1890,194 @@ async function loadDepartmentsList() {
         departmentsList.appendChild(deptEl);
     });
 }
+
+// Tab switching functionality
+function switchTab(tabName) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + 'Tab').classList.add('active');
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+    
+    // Load data for the selected tab
+    if (tabName === 'users') {
+        loadUserAssignments();
+        loadUsersForAssignment();
+    }
+}
+
+// User assignment functionality
+async function setupUserAssignment() {
+    const form = document.getElementById('assignUserForm');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('userSelect').value;
+            const departmentId = document.getElementById('deptSelect').value;
+            
+            if (!username || !departmentId) {
+                alert('Please select both user and department');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/user-departments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        departmentId: departmentId
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('User assigned to department successfully!');
+                    loadUserAssignments();
+                    loadUsersForAssignment();
+                    // Update global userDepartments object
+                    userDepartments[username] = departmentId;
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + (error.error || 'Failed to assign user'));
+                }
+            } catch (error) {
+                console.error('Error assigning user:', error);
+                alert('Error assigning user to department');
+            }
+        });
+    }
+}
+
+async function loadUsersForAssignment() {
+    const userSelect = document.getElementById('userSelect');
+    const deptSelect = document.getElementById('deptSelect');
+    
+    if (!userSelect || !deptSelect) return;
+    
+    try {
+        // Load users from activity data
+        const response = await fetch('/api/activity?limit=1000');
+        const data = await response.json();
+        
+        // Get unique usernames
+        const uniqueUsers = [...new Set(data.events.map(event => event.username))];
+        
+        // Populate user select
+        userSelect.innerHTML = '<option value="">Choose a user...</option>';
+        uniqueUsers.forEach(username => {
+            const option = document.createElement('option');
+            option.value = username;
+            option.textContent = username;
+            userSelect.appendChild(option);
+        });
+        
+        // Populate department select
+        deptSelect.innerHTML = '<option value="">Choose a department...</option>';
+        departments.forEach(dept => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = dept.name;
+            option.style.color = dept.color;
+            deptSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+async function loadUserAssignments() {
+    const userAssignmentsList = document.getElementById('userAssignmentsList');
+    if (!userAssignmentsList) return;
+    
+    try {
+        const response = await fetch('/api/user-departments');
+        const userDepts = await response.json();
+        
+        userAssignmentsList.innerHTML = '';
+        
+        if (Object.keys(userDepts).length === 0) {
+            userAssignmentsList.innerHTML = '<p>No user assignments found</p>';
+            return;
+        }
+        
+        Object.entries(userDepts).forEach(([username, departmentId]) => {
+            const dept = departments.find(d => d.id === departmentId);
+            const deptName = dept ? dept.name : 'Unknown';
+            const deptColor = dept ? dept.color : '#9CA3AF';
+            
+            const assignmentEl = document.createElement('div');
+            assignmentEl.className = 'user-assignment-item';
+            assignmentEl.innerHTML = `
+                <div class="assignment-info">
+                    <div class="user-name">${username}</div>
+                    <div class="department-name" style="color: ${deptColor}">
+                        <span class="dept-color" style="background-color: ${deptColor}"></span>
+                        ${deptName}
+                    </div>
+                </div>
+                <div class="assignment-actions">
+                    <button class="btn btn-sm btn-danger" onclick="removeUserAssignment('${username}')">
+                        <i class="fas fa-times"></i> Remove
+                    </button>
+                </div>
+            `;
+            userAssignmentsList.appendChild(assignmentEl);
+        });
+        
+    } catch (error) {
+        console.error('Error loading user assignments:', error);
+        userAssignmentsList.innerHTML = '<p>Error loading user assignments</p>';
+    }
+}
+
+async function removeUserAssignment(username) {
+    if (!confirm(`Are you sure you want to remove ${username} from their department?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/user-departments', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username
+            })
+        });
+        
+        if (response.ok) {
+            alert('User removed from department successfully!');
+            loadUserAssignments();
+            // Update global userDepartments object
+            delete userDepartments[username];
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.error || 'Failed to remove user assignment'));
+        }
+    } catch (error) {
+        console.error('Error removing user assignment:', error);
+        alert('Error removing user assignment');
+    }
+}
+
+// Make functions globally available
+window.switchTab = switchTab;
+window.removeUserAssignment = removeUserAssignment;
 
 function setupDepartmentForm() {
     const form = document.getElementById('addDepartmentForm');
@@ -2129,12 +2115,86 @@ function setupDepartmentForm() {
 
 // Global functions for inline event handlers
 window.editDepartment = function(departmentId) {
-    // Implementation for editing department
-    console.log('Edit department:', departmentId);
+    try {
+        const dept = departments.find(d => d.id === departmentId);
+        if (!dept) {
+            alert('Department not found');
+            return;
+        }
+
+        // Create edit modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Edit Department</h3>
+                    <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="editDepartmentForm">
+                        <div class="form-group">
+                            <label for="editDeptName">Name</label>
+                            <input type="text" id="editDeptName" value="${dept.name}" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="editDeptColor">Color</label>
+                            <input type="color" id="editDeptColor" value="${dept.color || '#3B82F6'}" />
+                        </div>
+                        <div class="form-group">
+                            <label for="editDeptDescription">Description</label>
+                            <textarea id="editDeptDescription">${dept.description || ''}</textarea>
+                        </div>
+                        <div class="actions">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" class="btn" onclick="this.closest('.modal').remove()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const form = modal.querySelector('#editDepartmentForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = modal.querySelector('#editDeptName').value.trim();
+            const color = modal.querySelector('#editDeptColor').value;
+            const description = modal.querySelector('#editDeptDescription').value.trim();
+
+            try {
+                const response = await fetch(`/api/departments/${departmentId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ updates: { name, color, description } })
+                });
+
+                if (response.ok) {
+                    await loadDepartments();
+                    loadDepartmentsList();
+                    modal.remove();
+                    alert('Department updated successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Error updating department: ' + (error.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error updating department:', err);
+                alert('Error updating department: ' + err.message);
+            }
+        });
+    } catch (error) {
+        console.error('editDepartment error:', error);
+        alert('Failed to open edit dialog');
+    }
 };
 
 window.deleteDepartment = async function(departmentId) {
-    if (confirm('Are you sure you want to delete this department?')) {
+    const dept = departments.find(d => d.id === departmentId);
+    const deptName = dept ? dept.name : 'this department';
+    
+    if (confirm(`Are you sure you want to delete "${deptName}"? This will move all users in this department to "Other".`)) {
         try {
             const response = await fetch(`/api/departments/${departmentId}`, {
                 method: 'DELETE'
@@ -2143,9 +2203,10 @@ window.deleteDepartment = async function(departmentId) {
             if (response.ok) {
                 await loadDepartments();
                 loadDepartmentsList();
+                alert(`Department "${deptName}" deleted successfully!`);
             } else {
                 const error = await response.json();
-                alert('Error deleting department: ' + error.error);
+                alert('Error deleting department: ' + (error.error || 'Unknown error'));
             }
         } catch (error) {
             console.error('Error deleting department:', error);

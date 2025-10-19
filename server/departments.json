@@ -3,42 +3,35 @@
     "id": "it",
     "name": "IT Department",
     "color": "#3B82F6",
-    "description": "Information Technology"
-  },
-  "hr": {
-    "id": "hr",
-    "name": "Human Resources",
-    "color": "#10B981",
-    "description": "Human Resources"
+    "description": "Information Technology",
+    "userCount": 1
   },
   "finance": {
     "id": "finance",
     "name": "Finance",
     "color": "#F59E0B",
-    "description": "Finance & Accounting"
+    "description": "Finance & Accounting",
+    "userCount": 0
   },
   "marketing": {
     "id": "marketing",
     "name": "Marketing",
     "color": "#EF4444",
-    "description": "Marketing & Sales"
+    "description": "Marketing & Sales",
+    "userCount": 0
   },
   "operations": {
     "id": "operations",
     "name": "Operations",
     "color": "#8B5CF6",
-    "description": "Operations & Production"
-  },
-  "management": {
-    "id": "management",
-    "name": "Management",
-    "color": "#6B7280",
-    "description": "Management & Executive"
+    "description": "Operations & Production",
+    "userCount": 0
   },
   "other": {
     "id": "other",
     "name": "Other",
     "color": "#9CA3AF",
-    "description": "Other Departments"
+    "description": "Other Departments",
+    "userCount": 0
   }
 }

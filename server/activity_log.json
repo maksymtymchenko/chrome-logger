@@ -331,5 +331,105 @@
       "filename": "1760290791498_Maksyms-MacBook-Pro-2.local_screenshot.png",
       "reason": "window_change"
     }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 5002,
+    "timestamp": "2025-10-19T16:38:37.648Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Telegram",
+      "title": "Telegram",
+      "duration": 5002,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 1000,
+    "timestamp": "2025-10-19T16:38:37.648Z",
+    "reason": "window_change",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "screenshot",
+    "data": {
+      "filename": "1760891917648_Maksyms-MacBook-Pro-2.local_screenshot.png",
+      "reason": "window_change",
+      "application": "Cursor",
+      "title": "Cursor"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-19T16:38:37.648Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "screenshot",
+    "data": {
+      "filename": "1760891917648_Maksyms-MacBook-Pro-2.local_screenshot.png",
+      "reason": "window_change"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 20016,
+    "timestamp": "2025-10-19T16:48:18.221Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "window_activity",
+    "data": {
+      "application": "Telegram",
+      "title": "Telegram",
+      "duration": 20016,
+      "isIdle": false,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080
+      },
+      "path": "unknown"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 1000,
+    "timestamp": "2025-10-19T16:48:18.221Z",
+    "reason": "window_change",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "screenshot",
+    "data": {
+      "filename": "1760892498221_Maksyms-MacBook-Pro-2.local_screenshot.png",
+      "reason": "window_change",
+      "application": "Cursor",
+      "title": "Cursor"
+    }
+  },
+  {
+    "deviceIdHash": "c4d30bea0cf5fa88",
+    "domain": "windows-desktop",
+    "durationMs": 0,
+    "timestamp": "2025-10-19T16:48:18.221Z",
+    "reason": "active",
+    "username": "Maksyms-MacBook-Pro-2.local",
+    "type": "screenshot",
+    "data": {
+      "filename": "1760892498221_Maksyms-MacBook-Pro-2.local_screenshot.png",
+      "reason": "window_change"
+    }
   }
 ]
