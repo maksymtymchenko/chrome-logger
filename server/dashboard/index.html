@@ -400,6 +400,96 @@
             justify-content: flex-end;
             gap: 10px;
         }
+        /* Department Management Styles */
+        
+        .departments-list {
+            margin-bottom: 30px;
+        }
+        
+        .department-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #f8fafc;
+        }
+        
+        .department-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .department-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        
+        .department-details h4 {
+            margin: 0 0 5px 0;
+            color: #1f2937;
+        }
+        
+        .department-details p {
+            margin: 0 0 5px 0;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        
+        .department-details small {
+            color: #9ca3af;
+            font-size: 0.8rem;
+        }
+        
+        .department-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .add-department {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 20px;
+        }
+        
+        .add-department h4 {
+            margin-bottom: 15px;
+            color: #1f2937;
+        }
+        
+        .add-department form {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .add-department input,
+        .add-department textarea {
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .add-department textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
         
         .detail-section {
             margin-bottom: 20px;
@@ -1333,6 +1423,9 @@
                 <select id="userFilter" class="filter-select">
                     <option value="">All Users</option>
                 </select>
+                <select id="departmentFilter" class="filter-select">
+                    <option value="">All Departments</option>
+                </select>
                 <select id="domainFilter" class="filter-select">
                     <option value="">All Domains</option>
                 </select>
@@ -1354,6 +1447,9 @@
                 </select>
                 <button id="refreshBtn" class="btn btn-primary">
                     <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button id="manageDepartmentsBtn" class="btn btn-secondary">
+                    <i class="fas fa-building"></i> Manage Departments
                 </button>
                 <button id="exportAllBtn" class="btn btn-secondary">
                     <i class="fas fa-download"></i> Export All

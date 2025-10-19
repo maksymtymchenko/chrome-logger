@@ -72,6 +72,12 @@ This directory contains all test files for the Keylogger Chrome project. The tes
 - **Usage**: `node test-screenshot-stats.js`
 - **What it tests**: Screenshots API, count display, stat card updates
 
+#### `test-username-change-removal.js`
+
+- **Purpose**: Tests username change functionality removal
+- **Usage**: `node test-username-change-removal.js`
+- **What it tests**: HTML elements, JavaScript functions, UI simplification
+
 ## Running Tests
 
 ### Prerequisites

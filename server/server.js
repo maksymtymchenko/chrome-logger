@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const bcrypt = require('bcryptjs');
+const DepartmentManager = require('./department-manager');
 require('dotenv').config();
 const app = express();
 
@@ -115,6 +116,9 @@ if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]', 'utf8');
 
 const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
 if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR);
+
+// Initialize Department Manager
+const departmentManager = new DepartmentManager(__dirname);
 
 
 // Authentication middleware
@@ -1093,6 +1097,172 @@ function calculateProductivityInsights(events) {
         personalTimeRatio: totalTime > 0 ? Math.round((personalTime / totalTime) * 100) : 0
     };
 }
+
+// Department Management API endpoints
+// Get all departments
+app.get('/api/departments', async(req, res) => {
+    try {
+        const departments = departmentManager.getAllDepartments();
+        res.json(departments);
+    } catch (error) {
+        console.error('Error getting departments:', error);
+        res.status(500).json({ error: 'Failed to get departments' });
+    }
+});
+
+// Create department
+app.post('/api/departments', requireRole(['ADMIN']), async(req, res) => {
+    try {
+        const { id, name, color, description } = req.body;
+        const department = departmentManager.createDepartment(id, name, color, description);
+        res.json(department);
+    } catch (error) {
+        console.error('Error creating department:', error);
+        res.status(500).json({ error: 'Failed to create department' });
+    }
+});
+
+// Update department
+app.put('/api/departments/:id', requireRole(['ADMIN']), async(req, res) => {
+    try {
+        const { id } = req.params;
+        const { updates } = req.body;
+        const department = departmentManager.updateDepartment(id, updates);
+        if (department) {
+            res.json(department);
+        } else {
+            res.status(404).json({ error: 'Department not found' });
+        }
+    } catch (error) {
+        console.error('Error updating department:', error);
+        res.status(500).json({ error: 'Failed to update department' });
+    }
+});
+
+// Delete department
+app.delete('/api/departments/:id', requireRole(['ADMIN']), async(req, res) => {
+    try {
+        const { id } = req.params;
+        const result = departmentManager.deleteDepartment(id);
+        if (result) {
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Department not found' });
+        }
+    } catch (error) {
+        console.error('Error deleting department:', error);
+        res.status(500).json({ error: 'Failed to delete department' });
+    }
+});
+
+// Get user departments
+app.get('/api/user-departments', async(req, res) => {
+    try {
+        const userDepartments = {};
+        for (const [username, deptId] of departmentManager.userDepartments) {
+            userDepartments[username] = deptId;
+        }
+        res.json(userDepartments);
+    } catch (error) {
+        console.error('Error getting user departments:', error);
+        res.status(500).json({ error: 'Failed to get user departments' });
+    }
+});
+
+// Assign user to department
+app.post('/api/user-departments', requireRole(['ADMIN']), async(req, res) => {
+    try {
+        const { username, departmentId } = req.body;
+        const result = departmentManager.assignUserToDepartment(username, departmentId);
+        res.json(result);
+    } catch (error) {
+        console.error('Error assigning user to department:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get users in department
+app.get('/api/departments/:id/users', async(req, res) => {
+    try {
+        const { id } = req.params;
+        const users = departmentManager.getUsersInDepartment(id);
+        res.json(users);
+    } catch (error) {
+        console.error('Error getting department users:', error);
+        res.status(500).json({ error: 'Failed to get department users' });
+    }
+});
+
+// Filter users by department
+app.post('/api/departments/filter-users', async(req, res) => {
+    try {
+        const { users, departmentId } = req.body;
+        const filteredUsers = departmentManager.filterUsersByDepartment(users, departmentId);
+        res.json(filteredUsers);
+    } catch (error) {
+        console.error('Error filtering users by department:', error);
+        res.status(500).json({ error: 'Failed to filter users' });
+    }
+});
+
+// Group users by department
+app.post('/api/departments/group-users', async(req, res) => {
+    try {
+        const { users } = req.body;
+        const grouped = departmentManager.groupUsersByDepartment(users);
+        res.json(grouped);
+    } catch (error) {
+        console.error('Error grouping users by department:', error);
+        res.status(500).json({ error: 'Failed to group users' });
+    }
+});
+
+// Get department statistics
+app.get('/api/departments/:id/stats', async(req, res) => {
+    try {
+        const { id } = req.params;
+        const stats = departmentManager.getDepartmentStatistics(id);
+        res.json(stats);
+    } catch (error) {
+        console.error('Error getting department stats:', error);
+        res.status(500).json({ error: 'Failed to get department statistics' });
+    }
+});
+
+// Search departments
+app.get('/api/departments/search', async(req, res) => {
+    try {
+        const { q } = req.query;
+        const results = departmentManager.searchDepartments(q);
+        res.json(results);
+    } catch (error) {
+        console.error('Error searching departments:', error);
+        res.status(500).json({ error: 'Failed to search departments' });
+    }
+});
+
+// Export departments
+app.get('/api/departments/export', async(req, res) => {
+    try {
+        const data = departmentManager.exportDepartments();
+        res.json(data);
+    } catch (error) {
+        console.error('Error exporting departments:', error);
+        res.status(500).json({ error: 'Failed to export departments' });
+    }
+});
+
+// Import departments
+app.post('/api/departments/import', requireRole(['ADMIN']), async(req, res) => {
+    try {
+        const { data } = req.body;
+        const result = departmentManager.importDepartments(data);
+        res.json(result);
+    } catch (error) {
+        console.error('Error importing departments:', error);
+        res.status(500).json({ error: 'Failed to import departments' });
+    }
+});
 
 // Export endpoints
 app.get('/api/export/csv', (req, res) => {

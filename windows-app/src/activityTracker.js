@@ -354,8 +354,9 @@ class ActivityTracker {
 
         this.activityBuffer.push(activity);
 
-        // Send data if buffer is full
-        if (this.activityBuffer.length >= 10) {
+        // Send data if buffer is full (use configurable batch size)
+        const batchSize = this.configManager.get('batchSize') || 20;
+        if (this.activityBuffer.length >= batchSize) {
             await this.sendActivityData();
         }
     }

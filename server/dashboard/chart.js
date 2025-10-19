@@ -9,6 +9,11 @@ let currentEventIndex = 0;
 let chart = null;
 let usersChart = null;
 
+// Department state
+let departments = [];
+let userDepartments = {};
+let selectedDepartment = '';
+
 // Screenshot pagination state
 let allScreenshots = [];
 let currentScreenshotPage = 1;
@@ -21,10 +26,12 @@ let focusPatternsChart = null;
 // DOM elements
 const searchInput = document.getElementById('searchInput');
 const userFilter = document.getElementById('userFilter');
+const departmentFilter = document.getElementById('departmentFilter');
 const domainFilter = document.getElementById('domainFilter');
 const timeFilter = document.getElementById('timeFilter');
 const activityTypeFilter = document.getElementById('activityTypeFilter');
 const refreshBtn = document.getElementById('refreshBtn');
+const manageDepartmentsBtn = document.getElementById('manageDepartmentsBtn');
 const tbody = document.querySelector('#activityTable tbody');
 const pagination = document.getElementById('pagination');
 const refreshScreenshotsBtn = document.getElementById('refreshScreenshotsBtn');
@@ -90,6 +97,7 @@ document.addEventListener('DOMContentLoaded', async() => {
 function setupEventListeners() {
     searchInput.addEventListener('input', debounce(applyFilters, 300));
     userFilter.addEventListener('change', applyFilters);
+    departmentFilter.addEventListener('change', applyFilters);
     domainFilter.addEventListener('change', applyFilters);
     timeFilter.addEventListener('change', applyFilters);
     if (activityTypeFilter) {
@@ -109,6 +117,9 @@ function setupEventListeners() {
     }
     if (exportCSVBtn) {
         exportCSVBtn.addEventListener('click', exportCSV);
+    }
+    if (manageDepartmentsBtn) {
+        manageDepartmentsBtn.addEventListener('click', showDepartmentManagement);
     }
     refreshScreenshotsBtn.addEventListener('click', () => {
         loadScreens();
@@ -180,6 +191,9 @@ async function loadData() {
         const payload = await res.json();
 
         allEvents = payload.events || [];
+
+        // Load departments
+        await loadDepartments();
 
         // Update stats using API stats if available, otherwise calculate from events
         if (payload.stats) {
@@ -467,6 +481,7 @@ function updateScreenshotUserFilterOptions() {
 function applyFilters() {
     const searchTerm = searchInput.value.toLowerCase();
     const selectedUser = userFilter.value;
+    const selectedDepartment = departmentFilter.value;
     const selectedDomain = domainFilter.value;
     const selectedTime = timeFilter.value;
     const selectedActivityType = activityTypeFilter ? activityTypeFilter.value : '';
@@ -479,12 +494,13 @@ function applyFilters() {
             (event.data.application && event.data.application.toLowerCase().includes(searchTerm));
 
         const matchesUser = !selectedUser || event.username === selectedUser;
+        const matchesDepartment = !selectedDepartment || getDepartmentForUser(event.username) === selectedDepartment;
         const matchesDomain = !selectedDomain || event.domain === selectedDomain;
         const matchesActivityType = !selectedActivityType || event.type === selectedActivityType;
 
         const matchesTime = !selectedTime || isWithinTimeRange(event.timestamp, selectedTime);
 
-        return matchesSearch && matchesUser && matchesDomain && matchesActivityType && matchesTime;
+        return matchesSearch && matchesUser && matchesDepartment && matchesDomain && matchesActivityType && matchesTime;
     });
 
     currentPage = 1;
@@ -1963,3 +1979,177 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Department Management Functions
+async function loadDepartments() {
+    try {
+        const [departmentsRes, userDepartmentsRes] = await Promise.all([
+            fetch('/api/departments'),
+            fetch('/api/user-departments')
+        ]);
+        
+        if (departmentsRes.ok) {
+            departments = await departmentsRes.json();
+            updateDepartmentFilter();
+        }
+        
+        if (userDepartmentsRes.ok) {
+            userDepartments = await userDepartmentsRes.json();
+        }
+    } catch (error) {
+        console.error('Error loading departments:', error);
+    }
+}
+
+function updateDepartmentFilter() {
+    if (!departmentFilter) return;
+    
+    // Clear existing options
+    departmentFilter.innerHTML = '<option value="">All Departments</option>';
+    
+    // Add department options
+    departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept.id;
+        option.textContent = `${dept.name} (${dept.userCount || 0})`;
+        option.style.color = dept.color;
+        departmentFilter.appendChild(option);
+    });
+}
+
+function getDepartmentForUser(username) {
+    return userDepartments[username] || 'other';
+}
+
+function getDepartmentName(departmentId) {
+    const dept = departments.find(d => d.id === departmentId);
+    return dept ? dept.name : 'Other';
+}
+
+function getDepartmentColor(departmentId) {
+    const dept = departments.find(d => d.id === departmentId);
+    return dept ? dept.color : '#9CA3AF';
+}
+
+function showDepartmentManagement() {
+    // Create department management modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Manage Departments</h3>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="departments-list" id="departmentsList"></div>
+                <div class="add-department">
+                    <h4>Add New Department</h4>
+                    <form id="addDepartmentForm">
+                        <input type="text" id="deptId" placeholder="Department ID" required>
+                        <input type="text" id="deptName" placeholder="Department Name" required>
+                        <input type="color" id="deptColor" value="#3B82F6">
+                        <textarea id="deptDescription" placeholder="Description"></textarea>
+                        <button type="submit" class="btn btn-primary">Add Department</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    loadDepartmentsList();
+    setupDepartmentForm();
+}
+
+async function loadDepartmentsList() {
+    const departmentsList = document.getElementById('departmentsList');
+    if (!departmentsList) return;
+
+    departmentsList.innerHTML = '';
+    
+    departments.forEach(dept => {
+        const deptEl = document.createElement('div');
+        deptEl.className = 'department-item';
+        deptEl.innerHTML = `
+            <div class="department-info">
+                <div class="department-color" style="background-color: ${dept.color}"></div>
+                <div class="department-details">
+                    <h4>${dept.name}</h4>
+                    <p>${dept.description || 'No description'}</p>
+                    <small>Users: ${dept.userCount || 0}</small>
+                </div>
+            </div>
+            <div class="department-actions">
+                <button class="btn btn-sm btn-secondary" onclick="editDepartment('${dept.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteDepartment('${dept.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        departmentsList.appendChild(deptEl);
+    });
+}
+
+function setupDepartmentForm() {
+    const form = document.getElementById('addDepartmentForm');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('deptId').value;
+            const name = document.getElementById('deptName').value;
+            const color = document.getElementById('deptColor').value;
+            const description = document.getElementById('deptDescription').value;
+            
+            try {
+                const response = await fetch('/api/departments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, name, color, description })
+                });
+                
+                if (response.ok) {
+                    await loadDepartments();
+                    loadDepartmentsList();
+                    form.reset();
+                } else {
+                    const error = await response.json();
+                    alert('Error creating department: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error creating department:', error);
+                alert('Error creating department: ' + error.message);
+            }
+        });
+    }
+}
+
+// Global functions for inline event handlers
+window.editDepartment = function(departmentId) {
+    // Implementation for editing department
+    console.log('Edit department:', departmentId);
+};
+
+window.deleteDepartment = async function(departmentId) {
+    if (confirm('Are you sure you want to delete this department?')) {
+        try {
+            const response = await fetch(`/api/departments/${departmentId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                await loadDepartments();
+                loadDepartmentsList();
+            } else {
+                const error = await response.json();
+                alert('Error deleting department: ' + error.error);
+            }
+        } catch (error) {
+            console.error('Error deleting department:', error);
+            alert('Error deleting department: ' + error.message);
+        }
+    }
+};

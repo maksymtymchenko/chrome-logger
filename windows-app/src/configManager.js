@@ -8,15 +8,24 @@ class ConfigManager {
         this.defaultConfig = {
             username: 'Unknown',
             serverUrl: 'http://localhost:8080',
-            trackingInterval: 5000, // 5 seconds
+            // Optimized for multiple users on shared server
+            trackingInterval: 10000, // 10 seconds (reduced from 5s for better performance)
             trackClipboard: true,
             trackApplications: true,
             trackWindows: true,
             trackScreenshots: true,
-            screenshotOnWindowChange: true, // Take screenshots when window changes
-            screenshotOnClick: true, // Take screenshots on clicks (when implemented)
-            minActivityDuration: 1000, // 1 second minimum
+            screenshotOnWindowChange: true,
+            screenshotOnClick: false, // Disabled for better performance with multiple users
+            minActivityDuration: 2000, // 2 seconds minimum (increased from 1s)
             maxIdleTime: 300000, // 5 minutes
+            // Multi-user optimizations
+            maxBufferSize: 20, // Increased buffer size for better batching
+            screenshotQuality: 0.7, // Reduced quality for smaller file sizes
+            maxScreenshotsPerHour: 50, // Limit screenshots per user per hour
+            enableUserDetection: true, // Auto-detect user switches
+            // Performance settings
+            enableDataCompression: true,
+            batchSize: 20, // Increased batch size for better efficiency
             workApplications: [
                 'chrome.exe',
                 'firefox.exe',

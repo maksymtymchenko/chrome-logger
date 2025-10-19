@@ -11,32 +11,6 @@
 
 <body>
     <div class="app-container">
-        <!-- Setup Dialog -->
-        <div id="setupDialog" class="setup-dialog" style="display: none;" role="dialog" aria-labelledby="setup-title" aria-describedby="setup-description">
-            <div class="setup-content">
-                <div class="setup-header">
-                    <i class="fas fa-desktop" aria-hidden="true"></i>
-                    <h1 id="setup-title">Activity Tracker</h1>
-                </div>
-                <p id="setup-description" class="setup-subtitle">Enter your name to start tracking your activity</p>
-
-                <form class="form-group" onsubmit="return false;">
-                    <input type="text" id="usernameInput" placeholder="Enter your name" maxlength="50" required aria-label="Username" autocomplete="name">
-                    <div id="errorMessage" class="error-message" role="alert" aria-live="polite"></div>
-                </form>
-
-                <div class="button-group">
-                    <button id="useLaptopName" class="btn btn-secondary" type="button">
-                        <i class="fas fa-laptop" aria-hidden="true"></i>
-                        Use Laptop Name
-                    </button>
-                    <button id="saveUsername" class="btn btn-primary" type="button">
-                        <i class="fas fa-check" aria-hidden="true"></i>
-                        Start Tracking
-                    </button>
-                </div>
-            </div>
-        </div>
 
         <!-- Main Content (Default visible) -->
         <div id="mainContent" class="main-content">
@@ -47,10 +21,6 @@
                 <p>You can minimize this window to the system tray.</p>
                 <div class="user-info">
                     <p>Logged in as: <strong id="currentUsername">Loading...</strong></p>
-                    <button id="changeUsername" class="btn btn-secondary" type="button" aria-label="Change username">
-                        <i class="fas fa-edit" aria-hidden="true"></i>
-                        Change Name
-                    </button>
                 </div>
             </div>
         </div>
