@@ -7,7 +7,7 @@ class ConfigManager {
         this.configPath = path.join(os.homedir(), '.windows-activity-tracker', 'config.json');
         this.defaultConfig = {
             username: 'Unknown',
-            serverUrl: 'http://localhost:8080',
+            serverUrl: 'https://chrome-logger.onrender.com',
             // Optimized for multiple users on shared server
             trackingInterval: 10000, // 10 seconds (reduced from 5s for better performance)
             trackClipboard: true,
@@ -22,6 +22,8 @@ class ConfigManager {
             maxBufferSize: 20, // Increased buffer size for better batching
             screenshotQuality: 0.7, // Reduced quality for smaller file sizes
             maxScreenshotsPerHour: 50, // Limit screenshots per user per hour
+            minScreenshotInterval: 30000, // Minimum time between screenshots (30 seconds)
+            screenshotBatchDelay: 15000, // Delay before sending screenshot batch (15 seconds)
             enableUserDetection: true, // Auto-detect user switches
             // Performance settings
             enableDataCompression: true,

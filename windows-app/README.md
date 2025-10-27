@@ -19,7 +19,7 @@ A Windows desktop application that tracks user activity, applications, clipboard
 
    - Node.js (v16 or higher)
    - Windows 10/11, macOS 10.14+, or Linux
-   - The backend server running (see main project README)
+   - Internet connection (connects to backend at https://chrome-logger.onrender.com)
 
 2. **Install Dependencies**:
 
@@ -46,7 +46,7 @@ The app stores configuration in `~/.windows-activity-tracker/config.json`:
 ```json
 {
   "username": "YourUsername",
-  "serverUrl": "http://localhost:8080",
+  "serverUrl": "https://chrome-logger.onrender.com",
   "trackingInterval": 5000,
   "trackClipboard": true,
   "trackApplications": true,
