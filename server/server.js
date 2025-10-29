@@ -26,7 +26,8 @@ app.use((req, res, next) => {
     }
 });
 
-app.use(express.json({ limit: '5mb' })); // increase limit for screenshots
+app.use(express.json({ limit: '50mb' })); // allow larger screenshots/base64 payloads
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // MongoDB setup (optional, falls back to file storage if not configured)
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;

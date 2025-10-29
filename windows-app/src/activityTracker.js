@@ -1,9 +1,9 @@
-const clipboardy = require('clipboardy');
 const si = require('systeminformation');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { clipboard } = require('electron');
 
 // Mac window tracking using AppleScript
 
@@ -371,7 +371,8 @@ class ActivityTracker {
 
     async trackClipboard() {
         try {
-            const currentClipboard = await clipboardy.read();
+            // Use Electron's clipboard API instead of clipboardy
+            const currentClipboard = clipboard.readText();
             console.log('Clipboard check - current length:', currentClipboard ? currentClipboard.length : 0);
             console.log('Last clipboard length:', this.lastClipboard ? this.lastClipboard.length : 0);
 
