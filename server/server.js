@@ -26,8 +26,9 @@ app.use((req, res, next) => {
     }
 });
 
-app.use(express.json({ limit: '50mb' })); // allow larger screenshots/base64 payloads
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '100mb' })); // allow larger screenshots/base64 payloads
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+app.use(express.text({ limit: '100mb' })); // handle text/plain if client sends raw base64
 
 // MongoDB setup (optional, falls back to file storage if not configured)
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
@@ -153,6 +154,15 @@ app.get('/login', (req, res) => {
         return res.redirect('/dashboard');
     }
     res.sendFile(path.join(__dirname, 'dashboard', 'login.html'));
+});
+
+// Centralized error handler for oversized payloads
+app.use((err, req, res, next) => {
+    if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+        console.error('Payload too large:', err.message);
+        return res.status(413).json({ error: 'Payload too large', message: err.message });
+    }
+    next(err);
 });
 
 // Login endpoint
